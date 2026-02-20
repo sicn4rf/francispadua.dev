@@ -1,11 +1,11 @@
 import { ThemeProvider } from 'styled-components';
 import { Terminal } from './components/Terminal';
 import { GlobalStyle } from './styles/GlobalStyle';
-import { darkTheme } from './styles/themes';
+import { catppuccinFrappeTheme } from './styles/themes';
 
 function App() {
   return (
-    <ThemeProvider theme={darkTheme}>
+    <ThemeProvider theme={catppuccinFrappeTheme}>
       <GlobalStyle />
       <Terminal />
     </ThemeProvider>

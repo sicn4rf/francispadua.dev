@@ -38,3 +38,16 @@ export const matrixTheme: DefaultTheme = {
   },
   font: "'Courier New', monospace",
 };
+
+export const catppuccinFrappeTheme: DefaultTheme = {
+  colors: {
+    background: '#303446',
+    foreground: '#C6D3F1',
+    prompt: '#89B4FA',
+    command: '#A6E3A1',
+    result: '#BAC2DE',
+    error: '#F38BA8',
+    link: '#89B4FA',
+  },
+  font: "'Fira Code', 'Courier New', monospace",
+};
