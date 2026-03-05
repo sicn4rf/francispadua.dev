@@ -71,7 +71,8 @@ const Snake = ({ onExit }: SnakeProps) => {
   useEffect(() => { gameOverRef.current = gameOver; }, [gameOver]);
 
   const handleKey = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') { onExit(); return; }
+    e.stopPropagation();
+    if (e.key === 'Escape') { e.preventDefault(); onExit(); return; }
     if (gameOverRef.current && e.key === 'Enter') {
       setSnake([{ x: 15, y: 7 }]);
       setFood({ x: 20, y: 7 });

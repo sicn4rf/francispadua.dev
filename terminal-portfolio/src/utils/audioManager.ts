@@ -42,38 +42,79 @@ class AudioManager {
     osc.stop(ctx.currentTime + duration);
   }
 
-  private playNoise(duration: number, vol?: number) {
+  // Thocky mechanical keyboard sound using layered noise bursts
+  private playThock(pitchBase: number, vol?: number) {
     if (!this._enabled) return;
     const ctx = this.getCtx();
-    const bufferSize = ctx.sampleRate * duration;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * 0.02;
+    const v = (vol ?? this._volume) * 0.6;
+    const now = ctx.currentTime;
+
+    // Layer 1: sharp click (high-freq noise burst)
+    const clickLen = 0.012;
+    const clickBuf = ctx.createBuffer(1, ctx.sampleRate * clickLen, ctx.sampleRate);
+    const clickData = clickBuf.getChannelData(0);
+    for (let i = 0; i < clickData.length; i++) {
+      clickData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (clickData.length * 0.15));
     }
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    const gain = ctx.createGain();
-    gain.gain.value = (vol ?? this._volume) * 0.5;
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'highpass';
-    filter.frequency.value = 2000;
-    source.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-    source.start();
+    const clickSrc = ctx.createBufferSource();
+    clickSrc.buffer = clickBuf;
+    const clickGain = ctx.createGain();
+    clickGain.gain.setValueAtTime(v * 1.2, now);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + clickLen);
+    const clickFilter = ctx.createBiquadFilter();
+    clickFilter.type = 'bandpass';
+    clickFilter.frequency.value = 3000 + pitchBase;
+    clickFilter.Q.value = 1.5;
+    clickSrc.connect(clickFilter);
+    clickFilter.connect(clickGain);
+    clickGain.connect(ctx.destination);
+    clickSrc.start(now);
+
+    // Layer 2: thock body (lower-freq resonance)
+    const bodyLen = 0.04;
+    const bodyBuf = ctx.createBuffer(1, ctx.sampleRate * bodyLen, ctx.sampleRate);
+    const bodyData = bodyBuf.getChannelData(0);
+    for (let i = 0; i < bodyData.length; i++) {
+      bodyData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bodyData.length * 0.25));
+    }
+    const bodySrc = ctx.createBufferSource();
+    bodySrc.buffer = bodyBuf;
+    const bodyGain = ctx.createGain();
+    bodyGain.gain.setValueAtTime(v * 0.7, now);
+    bodyGain.gain.exponentialRampToValueAtTime(0.001, now + bodyLen);
+    const bodyFilter = ctx.createBiquadFilter();
+    bodyFilter.type = 'lowpass';
+    bodyFilter.frequency.value = 800 + pitchBase * 0.3;
+    bodyFilter.Q.value = 2;
+    bodySrc.connect(bodyFilter);
+    bodyFilter.connect(bodyGain);
+    bodyGain.connect(ctx.destination);
+    bodySrc.start(now);
+
+    // Layer 3: subtle pop (sine transient)
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(400 + pitchBase * 0.5, now);
+    osc.frequency.exponentialRampToValueAtTime(150, now + 0.025);
+    const oscGain = ctx.createGain();
+    oscGain.gain.setValueAtTime(v * 0.3, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+    osc.connect(oscGain);
+    oscGain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.03);
   }
 
   keystroke() {
-    const freq = 800 + Math.random() * 400;
-    this.playNoise(0.04);
-    this.playTone(freq, 0.03, 'square', this._volume * 0.3);
+    // Randomize pitch slightly for natural variation
+    const pitch = Math.random() * 400;
+    this.playThock(pitch);
   }
 
   enter() {
-    this.playTone(600, 0.06, 'sine');
-    setTimeout(() => this.playTone(800, 0.06, 'sine'), 30);
+    // Deeper, more satisfying thock for Enter
+    this.playThock(0, this._volume * 1.3);
+    setTimeout(() => this.playThock(200, this._volume * 0.5), 25);
   }
 
   error() {

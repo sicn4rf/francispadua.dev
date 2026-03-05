@@ -11,6 +11,39 @@ const Link = styled.a`
   cursor: pointer;
 `;
 
+// Man page styled components
+const ManHeader = styled.div`
+  font-weight: bold;
+  color: ${({ theme }) => theme.colors.foreground};
+  margin-bottom: 0.25rem;
+`;
+
+const ManSection = styled.div`
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+  font-weight: bold;
+  color: ${({ theme }) => theme.colors.foreground};
+  text-transform: uppercase;
+`;
+
+const ManEntry = styled.div`
+  padding-left: 2rem;
+  margin-bottom: 0.15rem;
+  display: flex;
+  gap: 1rem;
+`;
+
+const ManCmd = styled.span`
+  color: ${({ theme }) => theme.colors.command};
+  font-weight: bold;
+  min-width: 120px;
+  display: inline-block;
+`;
+
+const ManDesc = styled.span`
+  color: ${({ theme }) => theme.colors.result};
+`;
+
 const List = styled.ul`
   list-style-type: none;
   padding-left: 0;
@@ -98,46 +131,39 @@ export const commands: Record<string, Command> = {
   help: {
     cmd: 'help',
     desc: 'List available commands',
-    action: () => (
-      <div>
-        <SectionTitle>Navigation</SectionTitle>
-        <List>
-          {['about', 'experience', 'projects', 'skills', 'education', 'competitions', 'awards', 'contact', 'now'].map(c => (
-            <ListItem key={c}>
-              <strong style={{ minWidth: '110px', display: 'inline-block' }}>{c}</strong>
-              {commands[c].desc}
-            </ListItem>
+    action: () => {
+      const sections: [string, string[]][] = [
+        ['NAVIGATION', ['about', 'experience', 'projects', 'skills', 'education', 'competitions', 'awards', 'contact', 'now']],
+        ['FILE SYSTEM', ['ls', 'cd', 'cat', 'pwd']],
+        ['INTERACTIVE', ['typingtest', 'snake', 'wordle']],
+        ['SYSTEM', ['theme', 'sound', 'neofetch', 'clear']],
+      ];
+
+      return (
+        <div>
+          <ManHeader>PORTFOLIO(1)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;User Commands&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PORTFOLIO(1)</ManHeader>
+          <ManSection>NAME</ManSection>
+          <ManEntry><ManDesc>portfolio - interactive terminal portfolio of Francis Padua</ManDesc></ManEntry>
+          <ManSection>SYNOPSIS</ManSection>
+          <ManEntry><ManDesc>command [args...]</ManDesc></ManEntry>
+          {sections.map(([title, cmds]) => (
+            <React.Fragment key={title}>
+              <ManSection>{title}</ManSection>
+              {cmds.map(c => (
+                <ManEntry key={c}>
+                  <ManCmd>{c}</ManCmd>
+                  <ManDesc>{commands[c].desc}</ManDesc>
+                </ManEntry>
+              ))}
+            </React.Fragment>
           ))}
-        </List>
-        <SectionTitle>File System</SectionTitle>
-        <List>
-          {['ls', 'cd', 'cat', 'pwd'].map(c => (
-            <ListItem key={c}>
-              <strong style={{ minWidth: '110px', display: 'inline-block' }}>{c}</strong>
-              {commands[c].desc}
-            </ListItem>
-          ))}
-        </List>
-        <SectionTitle>Interactive</SectionTitle>
-        <List>
-          {['typingtest', 'snake', 'wordle'].map(c => (
-            <ListItem key={c}>
-              <strong style={{ minWidth: '110px', display: 'inline-block' }}>{c}</strong>
-              {commands[c].desc}
-            </ListItem>
-          ))}
-        </List>
-        <SectionTitle>System</SectionTitle>
-        <List>
-          {['theme', 'sound', 'neofetch', 'clear'].map(c => (
-            <ListItem key={c}>
-              <strong style={{ minWidth: '110px', display: 'inline-block' }}>{c}</strong>
-              {commands[c].desc}
-            </ListItem>
-          ))}
-        </List>
-      </div>
-    ),
+          <ManSection>TIPS</ManSection>
+          <ManEntry><ManDesc>Use arrow keys to navigate command history</ManDesc></ManEntry>
+          <ManEntry><ManDesc>Press Tab for autocomplete</ManDesc></ManEntry>
+          <ManEntry><ManDesc>Try: ls -a, cd projects, cat .secret</ManDesc></ManEntry>
+        </div>
+      );
+    },
   },
 
   about: {

@@ -16,7 +16,7 @@ const MAX_GUESSES = 6;
 
 const Container = styled.div`
   font-family: ${({ theme }) => theme.font};
-  max-width: 350px;
+  max-width: 300px;
 `;
 
 const Header = styled.div`
@@ -32,16 +32,16 @@ const Row = styled.div`
 `;
 
 const Cell = styled.div<{ $state: 'correct' | 'present' | 'absent' | 'empty' | 'active' }>`
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
   font-size: 16px;
   text-transform: uppercase;
-  border-radius: 3px;
-  border: 1px solid ${({ theme, $state }) => {
+  border-radius: 4px;
+  border: 2px solid ${({ theme, $state }) => {
     if ($state === 'empty') return theme.colors.surface;
     if ($state === 'active') return theme.colors.muted;
     return 'transparent';
@@ -53,9 +53,10 @@ const Cell = styled.div<{ $state: 'correct' | 'present' | 'absent' | 'empty' | '
     return 'transparent';
   }};
   color: ${({ theme, $state }) => {
-    if ($state === 'correct' || $state === 'present') return '#1e1e2e';
+    if ($state === 'correct' || $state === 'present') return theme.colors.background;
     return theme.colors.foreground;
   }};
+  transition: background 0.2s, border-color 0.2s;
 `;
 
 const Keyboard = styled.div`
@@ -153,7 +154,8 @@ const Wordle = ({ onExit }: WordleProps) => {
   }, []);
 
   const handleKey = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') { onExit(); return; }
+    e.stopPropagation();
+    if (e.key === 'Escape') { e.preventDefault(); onExit(); return; }
     if (gameOver) {
       if (e.key === 'Enter') {
         // Reload component

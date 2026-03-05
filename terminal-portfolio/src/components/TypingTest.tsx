@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import styled, { useTheme } from 'styled-components';
+import { audioManager } from '../utils/audioManager';
 
 const COMMON_WORDS = [
   'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'it',
@@ -191,6 +192,8 @@ const TypingTest = ({ args, onExit }: TypingTestProps) => {
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
       onExit();
       return;
     }
@@ -231,6 +234,7 @@ const TypingTest = ({ args, onExit }: TypingTestProps) => {
     const newValue = e.target.value;
     if (!started) setStarted(true);
 
+    audioManager.keystroke();
     setTyped(newValue);
 
     // Count correct chars
