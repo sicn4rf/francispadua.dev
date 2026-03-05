@@ -90,8 +90,31 @@ export const lightTheme: DefaultTheme = {
   font: FONT,
 };
 
+export const catppuccinTheme: DefaultTheme = {
+  colors: {
+    background: '#303446',
+    foreground: '#c6d0f5',
+    prompt: '#8caaee',
+    command: '#a6d189',
+    result: '#b5bfe2',
+    error: '#e78284',
+    link: '#8caaee',
+    surface: '#414559',
+    muted: '#737994',
+    accent: '#ca9ee6',
+    yellow: '#e5c890',
+    green: '#a6d189',
+    red: '#e78284',
+    blue: '#8caaee',
+    purple: '#ca9ee6',
+    teal: '#81c8be',
+  },
+  font: FONT,
+};
+
 export const themes: Record<string, DefaultTheme> = {
   cursor: cursorTheme,
+  catppuccin: catppuccinTheme,
   dark: darkTheme,
   matrix: matrixTheme,
   light: lightTheme,

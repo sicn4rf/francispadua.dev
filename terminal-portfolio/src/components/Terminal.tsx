@@ -1,20 +1,28 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useTerminal } from '../hooks/useTerminal';
 import { Output } from './Output';
 import { Prompt } from './Prompt';
+import { WindowFrame } from './WindowFrame';
+import { StatusBar } from './StatusBar';
+import { BANNER, BOOT_LINES } from '../utils/asciiArt';
+import { audioManager } from '../utils/audioManager';
+import { blink, fadeIn } from '../styles/GlobalStyle';
+import type { ReactNode } from 'react';
 
-const TerminalContainer = styled.div`
-  padding: 1.5rem;
-  min-height: 100vh;
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
+const TerminalBody = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  cursor: text;
 `;
 
 const InputArea = styled.div`
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+  min-height: 24px;
 `;
 
 const Input = styled.input`
@@ -22,67 +30,215 @@ const Input = styled.input`
   border: none;
   color: ${({ theme }) => theme.colors.foreground};
   font-family: ${({ theme }) => theme.font};
-  font-size: 16px;
+  font-size: 14px;
   flex: 1;
-  margin-left: 0.5rem;
   outline: none;
+  caret-color: ${({ theme }) => theme.colors.green};
 `;
 
-const WelcomeMessage = styled.div`
-  margin-bottom: 2rem;
-  line-height: 1.5;
+const BannerText = styled.pre`
+  color: ${({ theme }) => theme.colors.accent};
+  font-size: 10px;
+  line-height: 1.1;
+  margin: 0;
+  font-family: inherit;
+  animation: ${fadeIn} 0.5s ease-out;
+
+  @media (max-width: 600px) {
+    font-size: 5px;
+  }
 `;
 
-export const Terminal = () => {
-  const { history, processCommand } = useTerminal();
+const Subtitle = styled.div`
+  color: ${({ theme }) => theme.colors.muted};
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 12px;
+  animation: ${fadeIn} 0.5s ease-out 0.2s both;
+`;
+
+const Hint = styled.div`
+  color: ${({ theme }) => theme.colors.muted};
+  margin-bottom: 1.5rem;
+  font-size: 12px;
+  animation: ${fadeIn} 0.5s ease-out 0.4s both;
+`;
+
+const BootLine = styled.div<{ $delay: number }>`
+  color: ${({ theme }) => theme.colors.muted};
+  font-size: 12px;
+  animation: ${fadeIn} 0.1s ease-out ${p => p.$delay}s both;
+`;
+
+const Cursor = styled.span`
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: ${({ theme }) => theme.colors.green};
+  animation: ${blink} 1s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+`;
+
+const ActiveComponentWrapper = styled.div`
+  padding: 1rem 1.25rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+`;
+
+const CompletionHint = styled.div`
+  color: ${({ theme }) => theme.colors.muted};
+  font-size: 12px;
+  padding-left: 0.25rem;
+  margin-bottom: 0.25rem;
+`;
+
+interface TerminalProps {
+  currentTheme: string;
+  setTheme: (name: string) => void;
+}
+
+export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
+  const [cwd, setCwd] = useState('~');
+  const [soundEnabled, setSoundEnabled] = useState(audioManager.enabled);
+  const [soundVolume, setSoundVolume] = useState(audioManager.volume);
+  const [activeComponent, setActiveComponent] = useState<ReactNode | null>(null);
   const [input, setInput] = useState('');
+  const [booting, setBooting] = useState(true);
+  const [completions, setCompletions] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const handleSetSound = useCallback((v: boolean) => {
+    audioManager.enabled = v;
+    setSoundEnabled(v);
+  }, []);
+
+  const handleSetVolume = useCallback((v: number) => {
+    audioManager.volume = v;
+    setSoundVolume(v);
+  }, []);
+
+  const { history, processCommand, navigateHistory, getCompletions } = useTerminal({
+    cwd,
+    setCwd,
+    setTheme,
+    currentTheme,
+    soundEnabled,
+    setSoundEnabled: handleSetSound,
+    soundVolume,
+    setSoundVolume: handleSetVolume,
+    setActiveComponent,
+  });
+
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [history]);
+    audioManager.boot();
+    const timer = setTimeout(() => setBooting(false), 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [history]);
+  }, [history, booting]);
+
+  useEffect(() => {
+    if (!activeComponent && !booting) {
+      inputRef.current?.focus();
+    }
+  }, [history, activeComponent, booting]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
+      audioManager.enter();
+      setCompletions([]);
       processCommand(input);
       setInput('');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prev = navigateHistory('up');
+      if (prev !== null) setInput(prev);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = navigateHistory('down');
+      if (next !== null) setInput(next);
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      const matches = getCompletions(input);
+      if (matches.length === 1) {
+        setInput(matches[0]);
+        setCompletions([]);
+      } else if (matches.length > 1) {
+        setCompletions(matches);
+      }
+    } else if (e.key === 'l' && e.ctrlKey) {
+      e.preventDefault();
+      processCommand('clear');
     }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+    setCompletions([]);
+    audioManager.keystroke();
   };
 
   const handleContainerClick = () => {
     inputRef.current?.focus();
   };
 
+  const statusBar = (
+    <StatusBar cwd={cwd} themeName={currentTheme} soundEnabled={soundEnabled} />
+  );
+
+  if (activeComponent) {
+    return (
+      <WindowFrame title={`visitor@portfolio: ${cwd}`} statusBar={statusBar}>
+        <ActiveComponentWrapper>{activeComponent}</ActiveComponentWrapper>
+      </WindowFrame>
+    );
+  }
+
   return (
-    <TerminalContainer onClick={handleContainerClick}>
-      <WelcomeMessage>
-        <div>Welcome to the interactive portfolio of <strong>Francis Escares Padua</strong>.</div>
-        <div>Type <strong>'help'</strong> to get started.</div>
-      </WelcomeMessage>
+    <WindowFrame title={`visitor@portfolio: ${cwd}`} statusBar={statusBar}>
+      <TerminalBody onClick={handleContainerClick}>
+        {booting ? (
+          BOOT_LINES.map((line, i) => (
+            <BootLine key={i} $delay={i * 0.14}>{line}</BootLine>
+          ))
+        ) : (
+          <>
+            <BannerText>{BANNER}</BannerText>
+            <Subtitle>CS @ UCI '27 | Software Developer | Infrastructure Engineer</Subtitle>
+            <Hint>Type <strong style={{ color: 'inherit' }}>'help'</strong> to see available commands.</Hint>
 
-      {history.map((item) => (
-        <Output key={item.id} item={item} />
-      ))}
+            {history.map((item) => (
+              <Output key={item.id} item={item} cwd={cwd} />
+            ))}
 
-      <InputArea>
-        <Prompt />
-        <Input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          autoFocus
-        />
-      </InputArea>
-      <div ref={bottomRef} />
-    </TerminalContainer>
+            {completions.length > 1 && (
+              <CompletionHint>{completions.join('  ')}</CompletionHint>
+            )}
+
+            <InputArea>
+              <Prompt cwd={cwd} />
+              <Input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+                autoFocus
+                spellCheck={false}
+                autoComplete="off"
+                autoCapitalize="off"
+              />
+              {!input && <Cursor />}
+            </InputArea>
+            <div ref={bottomRef} />
+          </>
+        )}
+      </TerminalBody>
+    </WindowFrame>
   );
 };

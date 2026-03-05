@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import type { Command, TerminalContext } from '../types';
+import type { Command } from '../types';
 import { getNode, resolvePath } from './fileSystem';
 import { themes } from '../styles/themes';
 import { NEOFETCH, COW_TEMPLATE } from './asciiArt';
