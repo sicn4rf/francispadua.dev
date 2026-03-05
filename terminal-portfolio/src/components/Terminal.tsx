@@ -13,7 +13,7 @@ import type { ReactNode } from 'react';
 const TerminalBody = styled.div`
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: auto;
   padding: 1rem 1.25rem;
   cursor: text;
 `;
@@ -37,15 +37,15 @@ const Input = styled.input`
 `;
 
 const BannerLine = styled.div<{ $index: number; $total: number }>`
-  font-size: 10px;
+  font-size: 6px;
   line-height: 1.1;
   font-family: inherit;
   white-space: pre;
   animation: ${fadeIn} 0.15s ease-out ${p => p.$index * 0.05}s both;
-  color: ${({ $index, $total, theme }) => {
+  color: ${({ $index, $total }) => {
     const t = $index / ($total - 1);
-    // Gradient from theme blue -> purple -> accent
-    const colors = [theme.colors.blue, theme.colors.purple, theme.colors.accent];
+    // Catppuccin purple-pink gradient: mauve -> pink -> rosewater
+    const colors = ['#cba6f7', '#f5c2e7', '#f5e0dc'];
     const segment = t * (colors.length - 1);
     const i = Math.min(Math.floor(segment), colors.length - 2);
     const mix = segment - i;
@@ -59,6 +59,14 @@ const BannerLine = styled.div<{ $index: number; $total: number }>`
     return '#' + [lerp(r1, r2, mix), lerp(g1, g2, mix), lerp(b1, b2, mix)].map(v => v.toString(16).padStart(2, '0')).join('');
   }};
 
+  @media (min-width: 900px) {
+    font-size: 8px;
+  }
+
+  @media (min-width: 1200px) {
+    font-size: 10px;
+  }
+
   @media (max-width: 600px) {
     font-size: 4px;
   }
@@ -66,7 +74,6 @@ const BannerLine = styled.div<{ $index: number; $total: number }>`
 
 const BannerContainer = styled.div`
   margin: 0;
-  overflow: hidden;
 `;
 
 const Subtitle = styled.div`
@@ -114,6 +121,19 @@ const CompletionHint = styled.div`
   margin-bottom: 0.25rem;
 `;
 
+const MobileHint = styled.div`
+  color: ${({ theme }) => theme.colors.muted};
+  font-size: 11px;
+  text-align: center;
+  padding: 0.5rem;
+  opacity: 0.6;
+  display: none;
+
+  @media (max-width: 768px) {
+    display: block;
+  }
+`;
+
 interface TerminalProps {
   currentTheme: string;
   setTheme: (name: string) => void;
@@ -157,6 +177,29 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
     const timer = setTimeout(() => setBooting(false), 1200);
     return () => clearTimeout(timer);
   }, []);
+
+  // Konami code: ↑↑↓↓←→←→BA
+  useEffect(() => {
+    const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+    let seq: string[] = [];
+    const handler = (e: KeyboardEvent) => {
+      seq.push(e.key);
+      if (seq.length > KONAMI.length) seq = seq.slice(-KONAMI.length);
+      if (seq.length === KONAMI.length && seq.every((k, i) => k === KONAMI[i])) {
+        seq = [];
+        audioManager.success();
+        // Flash effect
+        document.body.style.transition = 'filter 0.15s';
+        document.body.style.filter = 'invert(1) hue-rotate(180deg)';
+        setTimeout(() => { document.body.style.filter = ''; }, 300);
+        // Unlock secret theme
+        setTheme('matrix');
+        processCommand('cowsay You found the secret! Matrix theme unlocked.');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [setTheme, processCommand]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -259,6 +302,7 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
               />
               {!input && <Cursor />}
             </InputArea>
+            <MobileHint>Tap anywhere to type</MobileHint>
             <div ref={bottomRef} />
           </>
         )}

@@ -5,14 +5,14 @@ const Frame = styled.div`
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
-  max-width: 1000px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 0.5rem;
 
   @media (min-width: 768px) {
     padding: 2rem;
-    height: 100vh;
   }
 `;
 

@@ -496,6 +496,20 @@ export const commands: Record<string, Command> = {
     },
   },
 
+  matrix: {
+    cmd: 'matrix',
+    desc: 'Enter the Matrix',
+    action: (_args, ctx) => {
+      const MatrixRainLauncher = React.lazy(() => import('../components/MatrixRain'));
+      ctx.setActiveComponent(
+        <React.Suspense fallback={null}>
+          <MatrixRainLauncher onDone={() => ctx.setActiveComponent(null)} />
+        </React.Suspense>
+      );
+      return 'Wake up, Neo...';
+    },
+  },
+
   // Interactive commands (render as components)
   typingtest: {
     cmd: 'typingtest',
