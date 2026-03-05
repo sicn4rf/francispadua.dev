@@ -5,7 +5,7 @@ import { Output } from './Output';
 import { Prompt } from './Prompt';
 import { WindowFrame } from './WindowFrame';
 import { StatusBar } from './StatusBar';
-import { BANNER, BOOT_LINES } from '../utils/asciiArt';
+import { BANNER_LINES, BOOT_LINES } from '../utils/asciiArt';
 import { audioManager } from '../utils/audioManager';
 import { blink, fadeIn } from '../styles/GlobalStyle';
 import type { ReactNode } from 'react';
@@ -36,17 +36,37 @@ const Input = styled.input`
   caret-color: ${({ theme }) => theme.colors.green};
 `;
 
-const BannerText = styled.pre`
-  color: ${({ theme }) => theme.colors.accent};
+const BannerLine = styled.div<{ $index: number; $total: number }>`
   font-size: 10px;
   line-height: 1.1;
-  margin: 0;
   font-family: inherit;
-  animation: ${fadeIn} 0.5s ease-out;
+  white-space: pre;
+  animation: ${fadeIn} 0.15s ease-out ${p => p.$index * 0.05}s both;
+  color: ${({ $index, $total, theme }) => {
+    const t = $index / ($total - 1);
+    // Gradient from theme blue -> purple -> accent
+    const colors = [theme.colors.blue, theme.colors.purple, theme.colors.accent];
+    const segment = t * (colors.length - 1);
+    const i = Math.min(Math.floor(segment), colors.length - 2);
+    const mix = segment - i;
+    const from = colors[i];
+    const to = colors[i + 1];
+    // Simple hex interpolation
+    const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
+    const parse = (hex: string) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+    const [r1, g1, b1] = parse(from);
+    const [r2, g2, b2] = parse(to);
+    return '#' + [lerp(r1, r2, mix), lerp(g1, g2, mix), lerp(b1, b2, mix)].map(v => v.toString(16).padStart(2, '0')).join('');
+  }};
 
   @media (max-width: 600px) {
-    font-size: 5px;
+    font-size: 4px;
   }
+`;
+
+const BannerContainer = styled.div`
+  margin: 0;
+  overflow: hidden;
 `;
 
 const Subtitle = styled.div`
@@ -208,7 +228,11 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
           ))
         ) : (
           <>
-            <BannerText>{BANNER}</BannerText>
+            <BannerContainer>
+              {BANNER_LINES.map((line, i) => (
+                <BannerLine key={i} $index={i} $total={BANNER_LINES.length}>{line}</BannerLine>
+              ))}
+            </BannerContainer>
             <Subtitle>CS @ UCI '27 | Software Developer | Infrastructure Engineer</Subtitle>
             <Hint>Type <strong style={{ color: 'inherit' }}>'help'</strong> to see available commands.</Hint>
 
