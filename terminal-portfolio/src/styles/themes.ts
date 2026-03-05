@@ -1,29 +1,49 @@
 import type { DefaultTheme } from 'styled-components';
 
-export const darkTheme: DefaultTheme = {
+const FONT = "'JetBrains Mono', 'Fira Code', 'Courier New', monospace";
+
+export const cursorTheme: DefaultTheme = {
   colors: {
-    background: '#1D2A35',
-    foreground: '#E0E0E0',
-    prompt: '#05CE91',
-    command: '#F0F0F0',
-    result: '#B0BEC5',
-    error: '#FF5252',
-    link: '#64B5F6',
+    background: '#1e1e2e',
+    foreground: '#cdd6f4',
+    prompt: '#89b4fa',
+    command: '#a6e3a1',
+    result: '#bac2de',
+    error: '#f38ba8',
+    link: '#89b4fa',
+    surface: '#313244',
+    muted: '#6c7086',
+    accent: '#cba6f7',
+    yellow: '#f9e2af',
+    green: '#a6e3a1',
+    red: '#f38ba8',
+    blue: '#89b4fa',
+    purple: '#cba6f7',
+    teal: '#94e2d5',
   },
-  font: "'Fira Code', 'Courier New', monospace",
+  font: FONT,
 };
 
-export const lightTheme: DefaultTheme = {
+export const darkTheme: DefaultTheme = {
   colors: {
-    background: '#FFFFFF',
-    foreground: '#333333',
-    prompt: '#0066CC',
-    command: '#000000',
-    result: '#555555',
-    error: '#D32F2F',
-    link: '#0066CC',
+    background: '#0d1117',
+    foreground: '#c9d1d9',
+    prompt: '#58a6ff',
+    command: '#7ee787',
+    result: '#8b949e',
+    error: '#f85149',
+    link: '#58a6ff',
+    surface: '#161b22',
+    muted: '#484f58',
+    accent: '#bc8cff',
+    yellow: '#e3b341',
+    green: '#7ee787',
+    red: '#f85149',
+    blue: '#58a6ff',
+    purple: '#bc8cff',
+    teal: '#39d353',
   },
-  font: "'Fira Code', 'Courier New', monospace",
+  font: FONT,
 };
 
 export const matrixTheme: DefaultTheme = {
@@ -35,19 +55,44 @@ export const matrixTheme: DefaultTheme = {
     result: '#003B00',
     error: '#FF0000',
     link: '#008F11',
+    surface: '#0a1a0a',
+    muted: '#005500',
+    accent: '#00FF41',
+    yellow: '#00FF41',
+    green: '#00FF41',
+    red: '#FF0000',
+    blue: '#008F11',
+    purple: '#00FF41',
+    teal: '#00FF41',
   },
   font: "'Courier New', monospace",
 };
 
-export const catppuccinFrappeTheme: DefaultTheme = {
+export const lightTheme: DefaultTheme = {
   colors: {
-    background: '#303446',
-    foreground: '#C6D3F1',
-    prompt: '#89B4FA',
-    command: '#A6E3A1',
-    result: '#BAC2DE',
-    error: '#F38BA8',
-    link: '#89B4FA',
+    background: '#ffffff',
+    foreground: '#24292f',
+    prompt: '#0550ae',
+    command: '#116329',
+    result: '#57606a',
+    error: '#cf222e',
+    link: '#0550ae',
+    surface: '#f6f8fa',
+    muted: '#8c959f',
+    accent: '#8250df',
+    yellow: '#9a6700',
+    green: '#116329',
+    red: '#cf222e',
+    blue: '#0550ae',
+    purple: '#8250df',
+    teal: '#1b7c83',
   },
-  font: "'Fira Code', 'Courier New', monospace",
+  font: FONT,
+};
+
+export const themes: Record<string, DefaultTheme> = {
+  cursor: cursorTheme,
+  dark: darkTheme,
+  matrix: matrixTheme,
+  light: lightTheme,
 };
