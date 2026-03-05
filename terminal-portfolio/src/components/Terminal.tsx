@@ -44,8 +44,8 @@ const BannerLine = styled.div<{ $index: number; $total: number }>`
   animation: ${fadeIn} 0.15s ease-out ${p => p.$index * 0.05}s both;
   color: ${({ $index, $total, theme }) => {
     const t = $index / ($total - 1);
-    // Gradient using theme colors: purple -> accent -> teal
-    const colors = [theme.colors.purple, theme.colors.accent, theme.colors.teal];
+    // Pink -> purple gradient
+    const colors = [theme.colors.purple, theme.colors.accent, theme.colors.purple];
     const segment = t * (colors.length - 1);
     const idx = Math.min(Math.floor(segment), colors.length - 2);
     const mix = segment - idx;
