@@ -17,6 +17,7 @@ const MAX_GUESSES = 6;
 const Container = styled.div`
   font-family: ${({ theme }) => theme.font};
   max-width: 300px;
+  margin: 0 auto;
 `;
 
 const Header = styled.div`
@@ -29,6 +30,7 @@ const Row = styled.div`
   display: flex;
   gap: 4px;
   margin-bottom: 4px;
+  justify-content: center;
 `;
 
 const Cell = styled.div<{ $state: 'correct' | 'present' | 'absent' | 'empty' | 'active' }>`
