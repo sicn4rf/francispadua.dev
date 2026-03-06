@@ -216,6 +216,25 @@ const TypingTest = ({ args, onExit }: TypingTestProps) => {
       return;
     }
 
+    if (e.key === 'Enter' && mode === 'code') {
+      e.preventDefault();
+      const newTyped = typed + '\n';
+      setTyped(newTyped);
+      if (!started) setStarted(true);
+      // Update correct chars count
+      let correct = 0;
+      for (let i = 0; i < newTyped.length && i < target.length; i++) {
+        if (newTyped[i] === target[i]) correct++;
+      }
+      setCorrectChars(correct);
+      setTotalChars(newTyped.length);
+      if (newTyped.length >= target.length) {
+        setFinished(true);
+        if (timerRef.current) clearInterval(timerRef.current);
+      }
+      return;
+    }
+
     if (e.key === 'Tab') {
       e.preventDefault();
       if (mode === 'code') {
@@ -223,10 +242,17 @@ const TypingTest = ({ args, onExit }: TypingTestProps) => {
         const newTyped = typed + '  ';
         setTyped(newTyped);
         if (!started) setStarted(true);
+        // Update correct chars count
+        let correct = 0;
+        for (let i = 0; i < newTyped.length && i < target.length; i++) {
+          if (newTyped[i] === target[i]) correct++;
+        }
+        setCorrectChars(correct);
+        setTotalChars(newTyped.length);
       }
       return;
     }
-  }, [finished, started, typed, mode, lang, duration, onExit]);
+  }, [finished, started, typed, mode, lang, duration, target, onExit]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (finished) return;
