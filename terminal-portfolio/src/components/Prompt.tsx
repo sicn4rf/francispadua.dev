@@ -7,19 +7,19 @@ const PromptContainer = styled.span`
 `;
 
 const User = styled.span`
-  color: ${({ theme }) => theme.colors.green};
+  color: ${({ theme }) => theme.colors.blue};
 `;
 
 const At = styled.span`
-  color: ${({ theme }) => theme.colors.muted};
+  color: ${({ theme }) => theme.colors.purple};
 `;
 
 const Host = styled.span`
-  color: ${({ theme }) => theme.colors.teal};
+  color: ${({ theme }) => theme.colors.green};
 `;
 
 const Sep = styled.span`
-  color: ${({ theme }) => theme.colors.muted};
+  color: ${({ theme }) => theme.colors.yellow};
 `;
 
 const Path = styled.span`
@@ -28,7 +28,7 @@ const Path = styled.span`
 `;
 
 const Dollar = styled.span`
-  color: ${({ theme }) => theme.colors.muted};
+  color: ${({ theme }) => theme.colors.yellow};
   margin-left: 4px;
 `;
 

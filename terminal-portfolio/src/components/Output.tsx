@@ -16,7 +16,7 @@ const CommandRow = styled.div`
 `;
 
 const CommandText = styled.span`
-  color: ${({ theme }) => theme.colors.command};
+  color: ${({ theme }) => theme.colors.accent};
 `;
 
 const ResultContainer = styled.div`
