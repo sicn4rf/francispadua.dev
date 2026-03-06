@@ -4,6 +4,10 @@ import type { Command } from '../types';
 import { getNode, resolvePath } from './fileSystem';
 import { themes } from '../styles/themes';
 import { NEOFETCH, COW_TEMPLATE } from './asciiArt';
+import { audioManager } from './audioManager';
+import type { SoundStyle } from './audioManager';
+import { ClickableItem } from '../components/ClickableItem';
+import { panelData } from './panelData';
 
 const Link = styled.a`
   color: ${({ theme }) => theme.colors.link};
@@ -34,7 +38,7 @@ const ManEntry = styled.div`
 `;
 
 const ManCmd = styled.span`
-  color: ${({ theme }) => theme.colors.command};
+  color: ${({ theme }) => theme.colors.accent};
   font-weight: bold;
   min-width: 120px;
   display: inline-block;
@@ -90,6 +94,16 @@ const Pre = styled.pre`
   font-size: inherit;
   line-height: 1.4;
   white-space: pre;
+`;
+
+const NeofetchOutput = styled.pre`
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.4;
+  white-space: pre;
+  color: ${({ theme }) => theme.colors.accent};
+  .neo-info { color: ${({ theme }) => theme.colors.purple}; }
 `;
 
 const Muted = styled.span`
@@ -169,42 +183,48 @@ export const commands: Record<string, Command> = {
   about: {
     cmd: 'about',
     desc: 'Learn about me',
-    action: () => (
-      <div>
-        <div style={{ marginBottom: '0.5rem' }}>
-          Hi! I'm <strong>Francis Escares Padua</strong>.
-        </div>
-        <div style={{ marginBottom: '0.5rem' }}>
-          I'm a Computer Science student at the <strong>University of California, Irvine</strong> (Class of 2027),
-          maintaining a 3.9 GPA. I have a strong background in software development and infrastructure engineering,
-          with a passion for building robust systems and exploring cybersecurity.
-        </div>
+    action: (_args, ctx) => (
+      <ClickableItem panel={panelData.about} openSidePanel={ctx.openSidePanel}>
         <div>
-          Currently, I work as a Software Developer for <strong>AntAlmanac</strong> and an Infrastructure Engineer for <strong>Cyber@UCI</strong>.
+          <div style={{ marginBottom: '0.5rem' }}>
+            Hi! I'm <strong>Francis Escares Padua</strong>.
+          </div>
+          <div style={{ marginBottom: '0.5rem' }}>
+            I'm a Computer Science student at the <strong>University of California, Irvine</strong> (Class of 2027),
+            maintaining a 3.9 GPA. I have a strong background in software development and infrastructure engineering,
+            with a passion for building robust systems and exploring cybersecurity.
+          </div>
+          <div>
+            Currently, I work as a Software Developer for <strong>AntAlmanac</strong> and an Infrastructure Engineer for <strong>Cyber@UCI</strong>.
+          </div>
         </div>
-      </div>
+      </ClickableItem>
     ),
   },
 
   experience: {
     cmd: 'experience',
     desc: 'View my professional experience',
-    action: () => (
+    action: (_args, ctx) => (
       <div>
-        <SectionTitle>Software Developer @ AntAlmanac</SectionTitle>
-        <Muted>Nov 2025 -- Present | Irvine, CA</Muted>
-        <List>
-          <ListItem>Optimized search latency by 30% by implementing constant-time lookups in TypeScript, serving 17,000 users.</ListItem>
-          <ListItem>Developed features to visualize course availability using React/MUI, improving user navigation experience.</ListItem>
-          <ListItem>Automated data processing latency using TypeScript and Github Actions CI/CD reducing latency to &lt;60 minutes.</ListItem>
-        </List>
-        <SectionTitle>Infrastructure Engineer @ Cyber@UCI</SectionTitle>
-        <Muted>Nov 2025 -- Present | Irvine, CA</Muted>
-        <List>
-          <ListItem>Deployed virtualization environments using Proxmox and Cloud-init to replicate complex network topologies.</ListItem>
-          <ListItem>Engineered virtual machines hosting diverse open-source services including Kubernetes, Docker, and Apache.</ListItem>
-          <ListItem>Developed internal tooling and scripts using Bash, Go, and Ansible to automate manual competition workflows.</ListItem>
-        </List>
+        <ClickableItem panel={panelData.antalmanac} openSidePanel={ctx.openSidePanel}>
+          <SectionTitle>Software Developer @ AntAlmanac</SectionTitle>
+          <Muted>Nov 2025 -- Present | Irvine, CA</Muted>
+          <List>
+            <ListItem>Optimized search latency by 30% by implementing constant-time lookups in TypeScript, serving 17,000 users.</ListItem>
+            <ListItem>Developed features to visualize course availability using React/MUI, improving user navigation experience.</ListItem>
+            <ListItem>Automated data processing latency using TypeScript and Github Actions CI/CD reducing latency to &lt;60 minutes.</ListItem>
+          </List>
+        </ClickableItem>
+        <ClickableItem panel={panelData.cyberuci} openSidePanel={ctx.openSidePanel}>
+          <SectionTitle>Infrastructure Engineer @ Cyber@UCI</SectionTitle>
+          <Muted>Nov 2025 -- Present | Irvine, CA</Muted>
+          <List>
+            <ListItem>Deployed virtualization environments using Proxmox and Cloud-init to replicate complex network topologies.</ListItem>
+            <ListItem>Engineered virtual machines hosting diverse open-source services including Kubernetes, Docker, and Apache.</ListItem>
+            <ListItem>Developed internal tooling and scripts using Bash, Go, and Ansible to automate manual competition workflows.</ListItem>
+          </List>
+        </ClickableItem>
       </div>
     ),
   },
@@ -212,28 +232,38 @@ export const commands: Record<string, Command> = {
   projects: {
     cmd: 'projects',
     desc: 'View my technical projects',
-    action: () => (
+    action: (_args, ctx) => (
       <div>
-        <List>
-          <ListItem>
-            <div>
-              <div><ProjectTitle>Northstar</ProjectTitle><TechStack>[Go, React, TypeScript, ConnectRPC, SQLite]</TechStack></div>
-              <div style={{ marginTop: '0.25rem' }}>Engineered a self-contained binary using Go and Vite enabling instant deployment on air-gapped Linux hosts. Architected a type-safe backend with ConnectRPC and GORM.</div>
-            </div>
-          </ListItem>
-          <ListItem>
-            <div>
-              <div><ProjectTitle>Phoenix</ProjectTitle><TechStack>[Go, MCP, ConnectRPC]</TechStack></div>
-              <div style={{ marginTop: '0.25rem' }}>Engineered a custom MCP server connecting Northstar to Claude Code enabling autonomous agentic workflows. Bridged the gap between AI agents and air-gapped infrastructure.</div>
-            </div>
-          </ListItem>
-          <ListItem>
-            <div>
-              <div><ProjectTitle>Cointegration Analyzer</ProjectTitle><TechStack>[C++, Python, Pandas]</TechStack></div>
-              <div style={{ marginTop: '0.25rem' }}>Pipeline analyzing 10,000 stock pairs for statistical arbitrage. Reduced computational overhead by 60% with C++.</div>
-            </div>
-          </ListItem>
-        </List>
+        <ClickableItem panel={panelData.northstar} openSidePanel={ctx.openSidePanel}>
+          <List>
+            <ListItem>
+              <div>
+                <div><ProjectTitle>Northstar</ProjectTitle><TechStack>[Go, React, TypeScript, ConnectRPC, SQLite]</TechStack></div>
+                <div style={{ marginTop: '0.25rem' }}>Engineered a self-contained binary using Go and Vite enabling instant deployment on air-gapped Linux hosts. Architected a type-safe backend with ConnectRPC and GORM.</div>
+              </div>
+            </ListItem>
+          </List>
+        </ClickableItem>
+        <ClickableItem panel={panelData.phoenix} openSidePanel={ctx.openSidePanel}>
+          <List>
+            <ListItem>
+              <div>
+                <div><ProjectTitle>Phoenix</ProjectTitle><TechStack>[Go, MCP, ConnectRPC]</TechStack></div>
+                <div style={{ marginTop: '0.25rem' }}>Engineered a custom MCP server connecting Northstar to Claude Code enabling autonomous agentic workflows. Bridged the gap between AI agents and air-gapped infrastructure.</div>
+              </div>
+            </ListItem>
+          </List>
+        </ClickableItem>
+        <ClickableItem panel={panelData.cointegration} openSidePanel={ctx.openSidePanel}>
+          <List>
+            <ListItem>
+              <div>
+                <div><ProjectTitle>Cointegration Analyzer</ProjectTitle><TechStack>[C++, Python, Pandas]</TechStack></div>
+                <div style={{ marginTop: '0.25rem' }}>Pipeline analyzing 10,000 stock pairs for statistical arbitrage. Reduced computational overhead by 60% with C++.</div>
+              </div>
+            </ListItem>
+          </List>
+        </ClickableItem>
       </div>
     ),
   },
@@ -241,16 +271,24 @@ export const commands: Record<string, Command> = {
   skills: {
     cmd: 'skills',
     desc: 'View my technical skills',
-    action: () => (
+    action: (_args, ctx) => (
       <div>
-        <SectionTitle>Languages</SectionTitle>
-        <div>Go, C++, Python, TypeScript, JavaScript, SQL, Bash</div>
-        <SectionTitle>Frameworks</SectionTitle>
-        <div>React, Tailwind CSS, MUI, ConnectRPC, GORM, Node.js, Next.js, tRPC, Vite</div>
-        <SectionTitle>Infrastructure</SectionTitle>
-        <div>Kubernetes, Docker, Ansible, Proxmox, GitHub Actions, Linux, Nginx</div>
-        <SectionTitle>Tools & Data</SectionTitle>
-        <div>Protocol Buffers, SQLite, PostgreSQL, MySQL, pandas, NumPy</div>
+        <ClickableItem panel={panelData.skillsLanguages} openSidePanel={ctx.openSidePanel}>
+          <SectionTitle>Languages</SectionTitle>
+          <div>Go, C++, Python, TypeScript, JavaScript, SQL, Bash</div>
+        </ClickableItem>
+        <ClickableItem panel={panelData.skillsFrameworks} openSidePanel={ctx.openSidePanel}>
+          <SectionTitle>Frameworks</SectionTitle>
+          <div>React, Tailwind CSS, MUI, ConnectRPC, GORM, Node.js, Next.js, tRPC, Vite</div>
+        </ClickableItem>
+        <ClickableItem panel={panelData.skillsInfra} openSidePanel={ctx.openSidePanel}>
+          <SectionTitle>Infrastructure</SectionTitle>
+          <div>Kubernetes, Docker, Ansible, Proxmox, GitHub Actions, Linux, Nginx</div>
+        </ClickableItem>
+        <ClickableItem panel={panelData.skillsTools} openSidePanel={ctx.openSidePanel}>
+          <SectionTitle>Tools & Data</SectionTitle>
+          <div>Protocol Buffers, SQLite, PostgreSQL, MySQL, pandas, NumPy</div>
+        </ClickableItem>
       </div>
     ),
   },
@@ -273,56 +311,64 @@ export const commands: Record<string, Command> = {
   competitions: {
     cmd: 'competitions',
     desc: 'View competition achievements',
-    action: () => (
-      <div>
-        <SectionTitle>Western Regional Collegiate Cyber Defense Competition</SectionTitle>
-        <div style={{ marginBottom: '0.5rem' }}><strong>1st Place</strong> (vs. 30 Teams) | Nov 2025 -- Present</div>
-        <List>
-          <ListItem>Secured critical Linux services within Kubernetes/Docker while defending against adversaries.</ListItem>
-          <ListItem>Orchestrated incident response workflows utilizing Claude Code (Phoenix).</ListItem>
-        </List>
-      </div>
+    action: (_args, ctx) => (
+      <ClickableItem panel={panelData.wrccdc} openSidePanel={ctx.openSidePanel}>
+        <div>
+          <SectionTitle>Western Regional Collegiate Cyber Defense Competition</SectionTitle>
+          <div style={{ marginBottom: '0.5rem' }}><strong>1st Place</strong> (vs. 30 Teams) | Nov 2025 -- Present</div>
+          <List>
+            <ListItem>Secured critical Linux services within Kubernetes/Docker while defending against adversaries.</ListItem>
+            <ListItem>Orchestrated incident response workflows utilizing Claude Code (Phoenix).</ListItem>
+          </List>
+        </div>
+      </ClickableItem>
     ),
   },
 
   awards: {
     cmd: 'awards',
     desc: 'View awards & certifications',
-    action: () => (
-      <div>
-        <SectionTitle>Awards & Competitions</SectionTitle>
-        <List>
-          <ListItem>
-            <div>
-              <strong>WRCCDC 1st Place</strong> <Muted>(vs. 30 Teams) | Nov 2025</Muted>
-              <div>Secured critical Linux services within Kubernetes/Docker while defending against active adversaries.</div>
-            </div>
-          </ListItem>
-        </List>
-      </div>
+    action: (_args, ctx) => (
+      <ClickableItem panel={panelData.wrccdc} openSidePanel={ctx.openSidePanel}>
+        <div>
+          <SectionTitle>Awards & Competitions</SectionTitle>
+          <List>
+            <ListItem>
+              <div>
+                <strong>WRCCDC 1st Place</strong> <Muted>(vs. 30 Teams) | Nov 2025</Muted>
+                <div>Secured critical Linux services within Kubernetes/Docker while defending against active adversaries.</div>
+              </div>
+            </ListItem>
+          </List>
+        </div>
+      </ClickableItem>
     ),
   },
 
   now: {
     cmd: 'now',
     desc: "What I'm up to right now",
-    action: () => (
+    action: (_args, ctx) => (
       <div>
-        <SectionTitle>Building</SectionTitle>
-        <List>
-          <ListItem>Terminal Portfolio — this interactive portfolio you're using right now</ListItem>
-          <ListItem>Phoenix — MCP server connecting AI agents to air-gapped infrastructure</ListItem>
-        </List>
+        <ClickableItem panel={panelData.nowBuilding} openSidePanel={ctx.openSidePanel}>
+          <SectionTitle>Building</SectionTitle>
+          <List>
+            <ListItem>Terminal Portfolio — this interactive portfolio you're using right now</ListItem>
+            <ListItem>Phoenix — MCP server connecting AI agents to air-gapped infrastructure</ListItem>
+          </List>
+        </ClickableItem>
         <SectionTitle>Learning</SectionTitle>
         <List>
           <ListItem>Advanced Kubernetes networking and service mesh</ListItem>
           <ListItem>Systems programming in Go and Rust</ListItem>
         </List>
-        <SectionTitle>Reading / Listening</SectionTitle>
-        <List>
-          <ListItem>"Designing Data-Intensive Applications" by Martin Kleppmann</ListItem>
-          <ListItem>Darknet Diaries podcast</ListItem>
-        </List>
+        <ClickableItem panel={panelData.nowReading} openSidePanel={ctx.openSidePanel}>
+          <SectionTitle>Reading / Listening</SectionTitle>
+          <List>
+            <ListItem>"Designing Data-Intensive Applications" by Martin Kleppmann</ListItem>
+            <ListItem>Darknet Diaries podcast</ListItem>
+          </List>
+        </ClickableItem>
         <SectionTitle>Goals</SectionTitle>
         <List>
           <ListItem>Land a summer 2026 SWE internship</ListItem>
@@ -459,9 +505,9 @@ export const commands: Record<string, Command> = {
 
   sound: {
     cmd: 'sound',
-    desc: 'Toggle sound effects',
+    desc: 'Sound on|off|volume|style',
     action: (args, ctx) => {
-      if (!args[0]) return `Sound is currently ${ctx.soundEnabled ? 'on' : 'off'} (volume: ${Math.round(ctx.soundVolume * 100)}%)`;
+      if (!args[0]) return `Sound is currently ${ctx.soundEnabled ? 'on' : 'off'} (volume: ${Math.round(ctx.soundVolume * 100)}%, style: ${audioManager.style})`;
       if (args[0] === 'on') { ctx.setSoundEnabled(true); return 'Sound enabled.'; }
       if (args[0] === 'off') { ctx.setSoundEnabled(false); return 'Sound disabled.'; }
       if (args[0] === 'volume' && args[1]) {
@@ -470,7 +516,16 @@ export const commands: Record<string, Command> = {
         ctx.setSoundVolume(vol / 100);
         return `Volume set to ${vol}%.`;
       }
-      return 'Usage: sound on|off|volume <0-100>';
+      if (args[0] === 'style') {
+        const styles: SoundStyle[] = ['thocky', 'poppy', 'clacky'];
+        if (!args[1]) return `Current style: ${audioManager.style}. Available: ${styles.join(', ')}`;
+        if (styles.includes(args[1] as SoundStyle)) {
+          audioManager.style = args[1] as SoundStyle;
+          return `Sound style set to ${args[1]}.`;
+        }
+        return `Unknown style "${args[1]}". Available: ${styles.join(', ')}`;
+      }
+      return 'Usage: sound on|off|volume <0-100>|style <thocky|poppy|clacky>';
     },
   },
 
@@ -478,8 +533,20 @@ export const commands: Record<string, Command> = {
     cmd: 'neofetch',
     desc: 'Display system info',
     action: (_args, ctx) => {
-      const info = NEOFETCH.replace('cursor', ctx.currentTheme);
-      return <Pre>{info}</Pre>;
+      const raw = NEOFETCH.replace('cursor', ctx.currentTheme);
+      const lines = raw.split('\n');
+      return (
+        <NeofetchOutput>
+          {lines.map((line, i) => {
+            // Lines with info have repeated spaces separating art from text
+            const match = line.match(/^(.{25,35}?\s{2,})(\S.*)$/);
+            if (match) {
+              return <span key={i}>{match[1]}<span className="neo-info">{match[2]}</span>{'\n'}</span>;
+            }
+            return <span key={i}>{line}{'\n'}</span>;
+          })}
+        </NeofetchOutput>
+      );
     },
   },
 
