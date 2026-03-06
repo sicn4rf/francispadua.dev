@@ -2,25 +2,25 @@ import type { DefaultTheme } from 'styled-components';
 
 const FONT = "'JetBrains Mono', 'Fira Code', 'Courier New', monospace";
 
-// Actual Anysphere Dark palette from Cursor IDE
+// Cursor Dark base + punchy accent colors
 export const cursorTheme: DefaultTheme = {
   colors: {
     background: '#181818',
     foreground: '#e4e4e4',
-    prompt: '#82d2ce',
-    command: '#efb080',
+    prompt: '#5de4c7',
+    command: '#ffa463',
     result: '#d6d6dd',
-    error: '#fc6b83',
-    link: '#87c3ff',
+    error: '#ff6b8a',
+    link: '#7dc4ff',
     surface: '#141414',
     muted: '#7a7a7a',
-    accent: '#aaa0fa',
-    yellow: '#d2943e',
-    green: '#3fa266',
-    red: '#fc6b83',
-    blue: '#87c3ff',
-    purple: '#e394dc',
-    teal: '#82d2ce',
+    accent: '#c49cff',
+    yellow: '#ffd580',
+    green: '#5de4c7',
+    red: '#ff6b8a',
+    blue: '#7dc4ff',
+    purple: '#f087d0',
+    teal: '#5de4c7',
   },
   font: FONT,
 };
