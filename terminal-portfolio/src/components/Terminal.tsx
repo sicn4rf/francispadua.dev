@@ -7,8 +7,18 @@ import { WindowFrame } from './WindowFrame';
 import { StatusBar } from './StatusBar';
 import { BANNER_LINES, BOOT_LINES } from '../utils/asciiArt';
 import { audioManager } from '../utils/audioManager';
+import { SidePanel } from './SidePanel';
 import { fadeIn } from '../styles/GlobalStyle';
 import type { ReactNode } from 'react';
+import type { SidePanelContent } from '../types';
+
+const TerminalLayout = styled.div`
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+`;
 
 const TerminalBody = styled.div`
   flex: 1;
@@ -44,16 +54,14 @@ const BannerLine = styled.div<{ $index: number; $total: number }>`
   animation: ${fadeIn} 0.15s ease-out ${p => p.$index * 0.05}s both;
   color: ${({ $index, $total, theme }) => {
     const t = $index / ($total - 1);
-    // Pink -> purple gradient
-    const colors = [theme.colors.purple, theme.colors.accent, theme.colors.purple];
-    const segment = t * (colors.length - 1);
-    const idx = Math.min(Math.floor(segment), colors.length - 2);
-    const mix = segment - idx;
+    // Pink -> purple gradient (top to bottom)
+    const pink = '#ca9ee6';
+    const purple = theme.colors.accent;
     const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
     const parse = (hex: string) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
-    const [r1, g1, b1] = parse(colors[idx]);
-    const [r2, g2, b2] = parse(colors[idx + 1]);
-    return '#' + [lerp(r1, r2, mix), lerp(g1, g2, mix), lerp(b1, b2, mix)].map(v => v.toString(16).padStart(2, '0')).join('');
+    const [r1, g1, b1] = parse(pink);
+    const [r2, g2, b2] = parse(purple);
+    return '#' + [lerp(r1, r2, t), lerp(g1, g2, t), lerp(b1, b2, t)].map(v => v.toString(16).padStart(2, '0')).join('');
   }};
 
   @media (min-width: 900px) {
@@ -131,6 +139,7 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
   const [soundEnabled, setSoundEnabled] = useState(audioManager.enabled);
   const [soundVolume, setSoundVolume] = useState(audioManager.volume);
   const [activeComponent, setActiveComponent] = useState<ReactNode | null>(null);
+  const [sidePanelContent, setSidePanelContent] = useState<SidePanelContent | null>(null);
   const [input, setInput] = useState('');
   const [booting, setBooting] = useState(true);
   const [completions, setCompletions] = useState<string[]>([]);
@@ -147,6 +156,14 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
     setSoundVolume(v);
   }, []);
 
+  const openSidePanel = useCallback((content: SidePanelContent) => {
+    setSidePanelContent(content);
+  }, []);
+
+  const closeSidePanel = useCallback(() => {
+    setSidePanelContent(null);
+  }, []);
+
   const { history, processCommand, navigateHistory, getCompletions } = useTerminal({
     cwd,
     setCwd,
@@ -157,6 +174,7 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
     soundVolume,
     setSoundVolume: handleSetVolume,
     setActiveComponent,
+    openSidePanel,
   });
 
   useEffect(() => {
@@ -251,48 +269,55 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
 
   return (
     <WindowFrame title={`visitor@portfolio: ${cwd}`} statusBar={statusBar}>
-      <TerminalBody onClick={handleContainerClick}>
-        {booting ? (
-          BOOT_LINES.map((line, i) => (
-            <BootLine key={i} $delay={i * 0.14}>{line}</BootLine>
-          ))
-        ) : (
-          <>
-            <BannerContainer>
-              {BANNER_LINES.map((line, i) => (
-                <BannerLine key={i} $index={i} $total={BANNER_LINES.length}>{line}</BannerLine>
+      <TerminalLayout>
+        <TerminalBody onClick={handleContainerClick}>
+          {booting ? (
+            BOOT_LINES.map((line, i) => (
+              <BootLine key={i} $delay={i * 0.14}>{line}</BootLine>
+            ))
+          ) : (
+            <>
+              <BannerContainer>
+                {BANNER_LINES.map((line, i) => (
+                  <BannerLine key={i} $index={i} $total={BANNER_LINES.length}>{line}</BannerLine>
+                ))}
+              </BannerContainer>
+              <Subtitle>CS @ UCI '27 | Software Developer | Infrastructure Engineer</Subtitle>
+              <Hint>Type <strong style={{ color: 'inherit' }}>'help'</strong> to see available commands.</Hint>
+
+              {history.map((item) => (
+                <Output key={item.id} item={item} cwd={cwd} />
               ))}
-            </BannerContainer>
-            <Subtitle>CS @ UCI '27 | Software Developer | Infrastructure Engineer</Subtitle>
-            <Hint>Type <strong style={{ color: 'inherit' }}>'help'</strong> to see available commands.</Hint>
 
-            {history.map((item) => (
-              <Output key={item.id} item={item} cwd={cwd} />
-            ))}
+              {completions.length > 1 && (
+                <CompletionHint>{completions.join('  ')}</CompletionHint>
+              )}
 
-            {completions.length > 1 && (
-              <CompletionHint>{completions.join('  ')}</CompletionHint>
-            )}
-
-            <InputArea>
-              <Prompt cwd={cwd} />
-              <Input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={handleChange}
-                onKeyDown={handleKeyDown}
-                autoFocus
-                spellCheck={false}
-                autoComplete="off"
-                autoCapitalize="off"
-              />
-            </InputArea>
-            <MobileHint>Tap anywhere to type</MobileHint>
-            <div ref={bottomRef} />
-          </>
-        )}
-      </TerminalBody>
+              <InputArea>
+                <Prompt cwd={cwd} />
+                <Input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={handleChange}
+                  onKeyDown={handleKeyDown}
+                  autoFocus
+                  spellCheck={false}
+                  autoComplete="off"
+                  autoCapitalize="off"
+                />
+              </InputArea>
+              <MobileHint>Tap anywhere to type</MobileHint>
+              <div ref={bottomRef} />
+            </>
+          )}
+        </TerminalBody>
+        <SidePanel
+          content={sidePanelContent}
+          open={sidePanelContent !== null}
+          onClose={closeSidePanel}
+        />
+      </TerminalLayout>
     </WindowFrame>
   );
 };
