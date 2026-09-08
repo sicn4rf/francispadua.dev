@@ -1,48 +1,100 @@
-// figlet -f "DOS Rebel" -w 999 ">FRANCIS" — full on one block
+/**
+ * ANSI Shadow. The previous banner used DOS Rebel, whose ░ shadow glyphs
+ * dissolve into checkerboard noise below ~12px — which is exactly the size the
+ * banner has to render at to fit. This font is solid blocks and box drawing,
+ * so it stays crisp small.
+ */
 export const BANNER_LINES = [
-  ' ███       ███████████ ███████████     █████████   ██████   █████   █████████  █████  █████████ ',
-  '░░░███    ░░███░░░░░░█░░███░░░░░███   ███░░░░░███ ░░██████ ░░███   ███░░░░░███░░███  ███░░░░░███',
-  '  ░░░███   ░███   █ ░  ░███    ░███  ░███    ░███  ░███░███ ░███  ███     ░░░  ░███ ░███    ░░░ ',
-  '    ░░░███ ░███████    ░██████████   ░███████████  ░███░░███░███ ░███          ░███ ░░█████████ ',
-  '     ███░  ░███░░░█    ░███░░░░░███  ░███░░░░░███  ░███ ░░██████ ░███          ░███  ░░░░░░░░███',
-  '   ███░    ░███  ░     ░███    ░███  ░███    ░███  ░███  ░░█████ ░░███     ███ ░███  ███    ░███',
-  ' ███░      █████       █████   █████ █████   █████ █████  ░░█████ ░░█████████  █████░░█████████ ',
-  '░░░       ░░░░░       ░░░░░   ░░░░░ ░░░░░   ░░░░░ ░░░░░    ░░░░░   ░░░░░░░░░  ░░░░░  ░░░░░░░░░  ',
+  '███████╗██████╗  █████╗ ███╗   ██╗ ██████╗██╗███████╗',
+  '██╔════╝██╔══██╗██╔══██╗████╗  ██║██╔════╝██║██╔════╝',
+  '█████╗  ██████╔╝███████║██╔██╗ ██║██║     ██║███████╗',
+  '██╔══╝  ██╔══██╗██╔══██║██║╚██╗██║██║     ██║╚════██║',
+  '██║     ██║  ██║██║  ██║██║ ╚████║╚██████╗██║███████║',
+  '╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝╚═╝╚══════╝',
 ];
 
 export const BOOT_LINES = [
-  '[    0.000] Initializing PortfolioOS v2.0...',
-  '[    0.142] Loading kernel modules.............. OK',
-  '[    0.387] Mounting filesystem................. OK',
-  '[    0.512] Starting audio subsystem............ OK',
-  '[    0.698] Establishing network connection..... OK',
-  '[    0.815] Loading user profile: francis....... OK',
-  '[    1.000] System ready.',
+  '[  0.000000] Booting portfolio-term 2.0',
+  '[  0.114203] systemd[1]: Reached target Local File Systems.',
+  '[  0.287551] Mounted /home/visitor ....................... OK',
+  '[  0.402118] Started francis-sh (interactive shell) ...... OK',
+  '[  0.588934] argocd: application "portfolio" Synced ...... OK',
+  '[  0.771260] kubelet: 6/6 pods Running ................... OK',
+  '[  0.912847] Reached target Multi-User System.',
 ];
 
-export const NEOFETCH = `
-       ████████████           visitor@portfolio
-     ██            ██         -----------------
-   ██    ██    ██    ██       OS:       PortfolioOS 2.0
-  ██    ████  ████    ██      Host:     francis-terminal
-  ██                  ██      Kernel:   React 19.2.0
-  ██    ██████████    ██      Shell:    francis-sh
-   ██    ██    ██    ██       Terminal: portfolio-term
-     ██            ██         CPU:      Vite 7.2.4
-       ████████████           Memory:   too many Chrome tabs
-         ██    ██             Uptime:   since you opened this
-         ██    ██             Theme:    cursor
-`;
+/**
+ * Rendered as two independent columns rather than one pre-formatted block —
+ * the old version reconstructed the split with a regex over run-lengths of
+ * whitespace, which broke whenever a value changed length.
+ */
+export const NEOFETCH_LOGO = [
+  '    ┌──────────────────────────┐',
+  '    │  ●   ●   ●               │',
+  '    ├──────────────────────────┤',
+  '    │                          │',
+  '    │  $ whoami                │',
+  '    │  francis                 │',
+  '    │                          │',
+  '    │  $ kubectl get pods      │',
+  '    │  6/6 Running             │',
+  '    │                          │',
+  '    │  $ _                     │',
+  '    │                          │',
+  '    └──────────────────────────┘',
+];
+
+export const neofetchInfo = (themeName: string): [string, string][] => [
+  ['OS', 'PortfolioOS 2.0 x86_64'],
+  ['Host', 'francispadua.com'],
+  ['Kernel', 'react-19.2.0'],
+  ['Shell', 'francis-sh 5.9'],
+  ['Terminal', 'portfolio-term'],
+  ['WM', 'zellij 0.42'],
+  ['Theme', themeName],
+  ['Editor', 'nvim'],
+  ['Cluster', 'portfolio-prod (6 pods, Healthy)'],
+  ['Languages', 'Go · TypeScript · C++ · Python'],
+  ['Infra', 'Kubernetes · Helm · ArgoCD · EKS'],
+  ['Uptime', 'since you opened this tab'],
+];
 
 export const COW_TEMPLATE = (message: string) => {
-  const line = '-'.repeat(message.length + 2);
-  return `
- ${line}
-< ${message} >
- ${line}
-        \\   ^__^
-         \\  (oo)\\_______
-            (__)\\       )\\/\\
-                ||----w |
-                ||     ||`;
+  // Wrap at 40 so a long message doesn't produce a mile-wide speech bubble.
+  const words = message.split(/\s+/);
+  const lines: string[] = [];
+  let line = '';
+  for (const word of words) {
+    if (line && line.length + word.length + 1 > 40) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  if (line) lines.push(line);
+
+  const width = Math.max(...lines.map(l => l.length));
+  const top = ` ${'_'.repeat(width + 2)}`;
+  const bottom = ` ${'-'.repeat(width + 2)}`;
+
+  const body =
+    lines.length === 1
+      ? [`< ${lines[0].padEnd(width)} >`]
+      : lines.map((l, i) => {
+          const [open, close] =
+            i === 0 ? ['/', '\\'] : i === lines.length - 1 ? ['\\', '/'] : ['|', '|'];
+          return `${open} ${l.padEnd(width)} ${close}`;
+        });
+
+  return [
+    top,
+    ...body,
+    bottom,
+    '        \\   ^__^',
+    '         \\  (oo)\\_______',
+    '            (__)\\       )\\/\\',
+    '                ||----w |',
+    '                ||     ||',
+  ].join('\n');
 };

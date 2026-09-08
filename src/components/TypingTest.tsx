@@ -1,379 +1,437 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import styled, { useTheme } from 'styled-components';
 import { audioManager } from '../utils/audioManager';
+import {
+  CODE_SNIPPETS,
+  chunkIntoLines,
+  computeStats,
+  lineAtIndex,
+  loadBest,
+  recordBest,
+  sampleWords,
+} from '../utils/typing';
 
-const COMMON_WORDS = [
-  'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'it',
-  'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at', 'this',
-  'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she', 'or',
-  'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what',
-  'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me',
-  'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know',
-  'take', 'people', 'into', 'year', 'your', 'good', 'some', 'could',
-  'them', 'see', 'other', 'than', 'then', 'now', 'look', 'only', 'come',
-  'its', 'over', 'think', 'also', 'back', 'after', 'use', 'two', 'how',
-  'our', 'work', 'first', 'well', 'way', 'even', 'new', 'want', 'because',
-  'any', 'these', 'give', 'day', 'most', 'us', 'great', 'between', 'need',
-  'large', 'under', 'never', 'each', 'right', 'move', 'own', 'while',
-  'found', 'head', 'still', 'long', 'might', 'next', 'much', 'call',
-  'world', 'hand', 'high', 'keep', 'last', 'left', 'start', 'might',
-  'begin', 'life', 'always', 'those', 'both', 'paper', 'group', 'often',
-  'run', 'point', 'turn', 'play', 'line', 'set', 'state', 'home',
-  'read', 'small', 'end', 'put', 'place', 'number', 'man', 'ask',
-  'change', 'went', 'light', 'kind', 'off', 'need', 'house', 'picture',
-  'try', 'again', 'animal', 'every', 'school', 'name', 'help', 'city',
-  'tree', 'cross', 'hard', 'port', 'miss', 'act', 'build', 'stay',
-  'fall', 'eat', 'room', 'friend', 'began', 'idea', 'fish', 'stop',
-  'example', 'system', 'code', 'function', 'program', 'type', 'data',
-];
+type Mode = 'words' | 'code';
 
-const CODE_SNIPPETS: Record<string, string[]> = {
-  go: [
-    `func fibonacci(n int) int {\n  if n <= 1 {\n    return n\n  }\n  return fibonacci(n-1) + fibonacci(n-2)\n}`,
-    `func reverseString(s string) string {\n  runes := []rune(s)\n  for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {\n    runes[i], runes[j] = runes[j], runes[i]\n  }\n  return string(runes)\n}`,
-    `func contains(slice []string, item string) bool {\n  for _, v := range slice {\n    if v == item {\n      return true\n    }\n  }\n  return false\n}`,
-  ],
-  python: [
-    `def binary_search(arr, target):\n    low, high = 0, len(arr) - 1\n    while low <= high:\n        mid = (low + high) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            low = mid + 1\n        else:\n            high = mid - 1\n    return -1`,
-    `def flatten(lst):\n    result = []\n    for item in lst:\n        if isinstance(item, list):\n            result.extend(flatten(item))\n        else:\n            result.append(item)\n    return result`,
-    `def is_palindrome(s):\n    s = s.lower().replace(" ", "")\n    return s == s[::-1]`,
-  ],
-  ts: [
-    `function debounce<T extends (...args: any[]) => void>(\n  fn: T,\n  delay: number\n): (...args: Parameters<T>) => void {\n  let timer: ReturnType<typeof setTimeout>;\n  return (...args) => {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn(...args), delay);\n  };\n}`,
-    `function groupBy<T>(arr: T[], key: keyof T): Record<string, T[]> {\n  return arr.reduce((acc, item) => {\n    const k = String(item[key]);\n    if (!acc[k]) acc[k] = [];\n    acc[k].push(item);\n    return acc;\n  }, {} as Record<string, T[]>);\n}`,
-    `async function retry<T>(\n  fn: () => Promise<T>,\n  attempts: number\n): Promise<T> {\n  for (let i = 0; i < attempts; i++) {\n    try {\n      return await fn();\n    } catch (e) {\n      if (i === attempts - 1) throw e;\n    }\n  }\n  throw new Error("unreachable");\n}`,
-  ],
-};
+const VISIBLE_LINES = 3;
+const LINE_WIDTH = 62;
 
 const Container = styled.div`
-  font-family: ${({ theme }) => theme.font};
+  max-width: 780px;
 `;
 
 const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-  color: ${({ theme }) => theme.colors.muted};
+  margin-bottom: 1.25rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+`;
+
+const Options = styled.div`
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+const Option = styled.button<{ $active: boolean }>`
+  background: ${({ theme, $active }) => ($active ? theme.colors.overlay : 'transparent')};
+  border: none;
+  border-radius: 3px;
+  padding: 3px 9px;
+  font-family: inherit;
   font-size: 12px;
+  cursor: pointer;
+  color: ${({ theme, $active }) => ($active ? theme.colors.accent : theme.colors.muted)};
+
+  &:hover {
+    color: ${({ theme }) => theme.colors.foreground};
+  }
 `;
 
-const WordsDisplay = styled.div`
-  line-height: 1.8;
-  margin-bottom: 1.5rem;
-  font-size: 16px;
-  min-height: 80px;
-  max-height: 200px;
+const Divider = styled.span`
+  color: ${({ theme }) => theme.colors.overlay};
+`;
+
+const Timer = styled.span`
+  color: ${({ theme }) => theme.colors.accent};
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+`;
+
+const Viewport = styled.div<{ $lines: number }>`
+  font-size: 19px;
+  line-height: 1.75;
+  height: ${p => p.$lines * 1.75}em;
   overflow: hidden;
+  position: relative;
 `;
 
-const HiddenInput = styled.input`
+/** Scrolls a whole line at a time, so the caret is never off-screen. */
+const Scroller = styled.div<{ $offset: number }>`
+  transform: translateY(${p => -p.$offset * 1.75}em);
+  transition: transform 0.15s ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+const Char = styled.span<{ $state: 'pending' | 'right' | 'wrong' | 'caret' }>`
+  color: ${({ theme, $state }) =>
+    $state === 'right'
+      ? theme.colors.green
+      : $state === 'wrong'
+        ? theme.colors.red
+        : theme.colors.muted};
+  background: ${({ theme, $state }) =>
+    $state === 'wrong' ? `${theme.colors.red}22` : 'transparent'};
+  border-left: 2px solid
+    ${({ theme, $state }) => ($state === 'caret' ? theme.colors.accent : 'transparent')};
+  margin-left: -2px;
+`;
+
+/**
+ * A textarea, not an input: `HTMLInputElement.value` silently strips newlines,
+ * so in code mode every character after the first line was being compared
+ * against the wrong index of the target.
+ */
+const Capture = styled.textarea`
   position: absolute;
   opacity: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  resize: none;
   pointer-events: none;
 `;
 
 const Stats = styled.div`
   display: flex;
-  gap: 2rem;
-  margin-top: 1rem;
+  gap: 2.5rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
 `;
 
-const StatBlock = styled.div`
-  text-align: center;
-`;
+const Stat = styled.div``;
 
 const StatValue = styled.div`
-  font-size: 28px;
-  font-weight: bold;
+  font-size: 30px;
+  font-weight: 700;
   color: ${({ theme }) => theme.colors.accent};
+  line-height: 1.1;
 `;
 
 const StatLabel = styled.div`
-  font-size: 11px;
+  font-size: 10px;
   color: ${({ theme }) => theme.colors.muted};
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
+  margin-top: 0.2rem;
 `;
 
-const ModeSelector = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+const Hint = styled.div`
+  color: ${({ theme }) => theme.colors.muted};
+  font-size: 11px;
+  margin-top: 1.5rem;
 `;
 
-const ModeButton = styled.span<{ $active: boolean }>`
-  color: ${({ theme, $active }) => $active ? theme.colors.accent : theme.colors.muted};
-  cursor: pointer;
-  padding: 2px 8px;
-  border-radius: 3px;
-  background: ${({ theme, $active }) => $active ? theme.colors.surface : 'transparent'};
+const Best = styled.span`
+  color: ${({ theme }) => theme.colors.muted};
   font-size: 12px;
 `;
 
-const ExitHint = styled.div`
-  color: ${({ theme }) => theme.colors.muted};
-  font-size: 11px;
-  margin-top: 1rem;
-`;
+const DURATIONS = [15, 30, 60];
+const LANGS = ['go', 'python', 'ts'];
+
+const makeTarget = (mode: Mode, lang: string) =>
+  mode === 'words'
+    ? sampleWords(120).join(' ')
+    : (CODE_SNIPPETS[lang] ?? CODE_SNIPPETS.ts)[
+        Math.floor(Math.random() * (CODE_SNIPPETS[lang] ?? CODE_SNIPPETS.ts).length)
+      ];
 
 interface TypingTestProps {
   args: string[];
   onExit: () => void;
 }
 
-function shuffleWords(count: number): string[] {
-  const result: string[] = [];
-  for (let i = 0; i < count; i++) {
-    result.push(COMMON_WORDS[Math.floor(Math.random() * COMMON_WORDS.length)]);
-  }
-  return result;
-}
-
 const TypingTest = ({ args, onExit }: TypingTestProps) => {
   const theme = useTheme();
 
-  // Parse args
-  const isCodeMode = args[0] === 'code';
-  const codeLang = isCodeMode ? (args[1] || 'ts') : '';
-  const timeArg = args.find(a => ['15', '30', '60'].includes(a));
-  const duration = parseInt(timeArg || '30');
+  const [mode, setMode] = useState<Mode>(args[0] === 'code' ? 'code' : 'words');
+  const [lang, setLang] = useState(() => (LANGS.includes(args[1]) ? args[1] : 'ts'));
+  const [duration, setDuration] = useState(() => {
+    const found = args.find(a => DURATIONS.includes(Number(a)));
+    return found ? Number(found) : 30;
+  });
 
-  const [mode, setMode] = useState<'words' | 'code'>(isCodeMode ? 'code' : 'words');
-  const [lang, setLang] = useState(codeLang || 'ts');
-  const [timeLeft, setTimeLeft] = useState(duration);
-  const [started, setStarted] = useState(false);
-  const [finished, setFinished] = useState(false);
+  // Lazy initialiser rather than a setState in an effect, which cascades renders.
+  const [target, setTarget] = useState(() => makeTarget(mode, lang));
   const [typed, setTyped] = useState('');
-  const [target, setTarget] = useState('');
-  const [correctChars, setCorrectChars] = useState(0);
-  const [totalChars, setTotalChars] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  /** Set when the run ends; its distance from startedAt is the scored time. */
+  const [finishedAt, setFinishedAt] = useState<number | null>(null);
+  /** Whole seconds since the start, for the countdown only. */
+  const [ticks, setTicks] = useState(0);
+  const [best, setBest] = useState(loadBest);
 
-  // Generate target text
+  const captureRef = useRef<HTMLTextAreaElement>(null);
+  // The deadline fires from a timer, which needs the newest text.
+  const typedRef = useRef('');
   useEffect(() => {
-    if (mode === 'words') {
-      setTarget(shuffleWords(80).join(' '));
-    } else {
-      const snippets = CODE_SNIPPETS[lang] || CODE_SNIPPETS.ts;
-      setTarget(snippets[Math.floor(Math.random() * snippets.length)]);
-    }
-    setTyped('');
-    setStarted(false);
-    setFinished(false);
-    setTimeLeft(duration);
-    setCorrectChars(0);
-    setTotalChars(0);
-    if (timerRef.current) clearInterval(timerRef.current);
-  }, [mode, lang, duration]);
+    typedRef.current = typed;
+  }, [typed]);
 
-  // Timer
+  const finished = finishedAt !== null;
+  const timeLeft = Math.max(0, duration - ticks);
+  const bestKey = mode === 'words' ? `words-${duration}` : `code-${lang}`;
+
+  const restart = useCallback(
+    (nextMode = mode, nextLang = lang) => {
+      setTarget(makeTarget(nextMode, nextLang));
+      setTyped('');
+      setStartedAt(null);
+      setFinishedAt(null);
+      setTicks(0);
+      captureRef.current?.focus();
+    },
+    [mode, lang],
+  );
+
+  /**
+   * Ends the run and banks the score. Called from event handlers and from the
+   * countdown — never from render, so reading the clock here is safe.
+   */
+  const finish = useCallback(
+    (finalTyped: string) => {
+      const at = Date.now();
+      setFinishedAt(at);
+
+      const seconds = startedAt ? (at - startedAt) / 1000 : 0;
+      const result = computeStats(finalTyped, target, seconds);
+      if (result.typed > 0) {
+        setBest(recordBest(bestKey, result.wpm, result.accuracy));
+        audioManager.success();
+      }
+    },
+    [startedAt, target, bestKey],
+  );
+
+  const elapsedSeconds =
+    startedAt !== null && finishedAt !== null ? (finishedAt - startedAt) / 1000 : ticks;
+
+  const stats = useMemo(
+    () => computeStats(typed, target, elapsedSeconds),
+    [typed, target, elapsedSeconds],
+  );
+
+  /* Drives the displayed countdown only. */
   useEffect(() => {
-    if (started && !finished) {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            setFinished(true);
-            clearInterval(timerRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [started, finished]);
+    if (startedAt === null || finished) return;
+    const id = setInterval(() => setTicks(prev => prev + 1), 1000);
+    return () => clearInterval(id);
+  }, [startedAt, finished]);
 
-  // Focus
+  /* The actual deadline. One timer against the wall clock, so a throttled
+     background tab cannot stretch the run. Code mode ends on completion. */
   useEffect(() => {
-    inputRef.current?.focus();
-  }, [mode, finished]);
+    if (startedAt === null || finished || mode !== 'words') return;
+    const remaining = startedAt + duration * 1000 - Date.now();
+    const id = setTimeout(() => finish(typedRef.current), Math.max(0, remaining));
+    return () => clearTimeout(id);
+  }, [startedAt, finished, mode, duration, finish]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+  useEffect(() => {
+    captureRef.current?.focus();
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (finished) return;
+
+    const value = e.target.value;
+    if (startedAt === null && value.length > 0) setStartedAt(Date.now());
+    audioManager.keystroke();
+    setTyped(value);
+
+    if (value.length >= target.length) finish(value);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
+
     if (e.key === 'Escape') {
       e.preventDefault();
-      e.stopPropagation();
       onExit();
       return;
     }
 
-    if (finished) {
-      if (e.key === 'Enter') {
-        // Restart
-        setTyped('');
-        setStarted(false);
-        setFinished(false);
-        setTimeLeft(duration);
-        setCorrectChars(0);
-        setTotalChars(0);
-        if (mode === 'words') setTarget(shuffleWords(80).join(' '));
-        else {
-          const snippets = CODE_SNIPPETS[lang] || CODE_SNIPPETS.ts;
-          setTarget(snippets[Math.floor(Math.random() * snippets.length)]);
-        }
+    if (e.key === 'Enter') {
+      if (finished) {
+        e.preventDefault();
+        restart();
+        return;
       }
-      return;
-    }
-
-    if (e.key === 'Enter' && mode === 'code') {
-      e.preventDefault();
-      const newTyped = typed + '\n';
-      setTyped(newTyped);
-      if (!started) setStarted(true);
-      // Update correct chars count
-      let correct = 0;
-      for (let i = 0; i < newTyped.length && i < target.length; i++) {
-        if (newTyped[i] === target[i]) correct++;
-      }
-      setCorrectChars(correct);
-      setTotalChars(newTyped.length);
-      if (newTyped.length >= target.length) {
-        setFinished(true);
-        if (timerRef.current) clearInterval(timerRef.current);
-      }
+      // In word mode a newline is never part of the target; swallow it.
+      if (mode === 'words') e.preventDefault();
       return;
     }
 
     if (e.key === 'Tab') {
       e.preventDefault();
-      if (mode === 'code') {
-        // Insert two spaces for tab in code mode
-        const newTyped = typed + '  ';
-        setTyped(newTyped);
-        if (!started) setStarted(true);
-        // Update correct chars count
-        let correct = 0;
-        for (let i = 0; i < newTyped.length && i < target.length; i++) {
-          if (newTyped[i] === target[i]) correct++;
-        }
-        setCorrectChars(correct);
-        setTotalChars(newTyped.length);
+      if (mode === 'code' && !finished) {
+        const value = `${typed}\t`;
+        if (startedAt === null) setStartedAt(Date.now());
+        setTyped(value);
       }
-      return;
-    }
-  }, [finished, started, typed, mode, lang, duration, target, onExit]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (finished) return;
-
-    const newValue = e.target.value;
-    if (!started) setStarted(true);
-
-    audioManager.keystroke();
-    setTyped(newValue);
-
-    // Count correct chars
-    let correct = 0;
-    let total = newValue.length;
-    for (let i = 0; i < newValue.length && i < target.length; i++) {
-      if (newValue[i] === target[i]) correct++;
-    }
-    setCorrectChars(correct);
-    setTotalChars(total);
-
-    // If typed all target in code mode
-    if (mode === 'code' && newValue.length >= target.length) {
-      setFinished(true);
-      if (timerRef.current) clearInterval(timerRef.current);
     }
   };
 
-  const elapsedTime = duration - timeLeft;
-  const wpm = elapsedTime > 0 ? Math.round((correctChars / 5) / (elapsedTime / 60)) : 0;
-  const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
+  /* Render the target, colour-coded, scrolled to keep the caret visible. */
+  const lines = useMemo(
+    () =>
+      mode === 'words'
+        ? chunkIntoLines(target.split(' '), LINE_WIDTH).map(w => w.join(' '))
+        : target.split('\n'),
+    [target, mode],
+  );
 
-  // Render target with coloring
-  const renderTarget = () => {
-    const chars = target.split('');
-    return chars.map((char, i) => {
-      let color = theme.colors.muted;
-      if (i < typed.length) {
-        color = typed[i] === char ? theme.colors.green : theme.colors.red;
-      } else if (i === typed.length) {
-        color = theme.colors.foreground;
-      }
+  const caretLine = useMemo(() => {
+    if (mode === 'words') {
+      return lineAtIndex(
+        chunkIntoLines(target.split(' '), LINE_WIDTH),
+        typed.length,
+      );
+    }
+    return typed.split('\n').length - 1;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typed.length, target, mode]);
 
-      const isCurrentChar = i === typed.length;
+  const visible = mode === 'code' ? lines.length : VISIBLE_LINES;
+  // Keep the active line in the middle band rather than at the bottom edge.
+  const offset = Math.max(0, Math.min(caretLine - 1, Math.max(0, lines.length - visible)));
+
+  let index = 0;
+  const rendered = lines.map((line, li) => {
+    const chars = [...line].map(char => {
+      const i = index++;
+      const state =
+        i < typed.length
+          ? typed[i] === char
+            ? ('right' as const)
+            : ('wrong' as const)
+          : i === typed.length
+            ? ('caret' as const)
+            : ('pending' as const);
       return (
-        <span
-          key={i}
-          style={{
-            color,
-            textDecoration: isCurrentChar ? 'underline' : 'none',
-            fontWeight: isCurrentChar ? 'bold' : 'normal',
-            whiteSpace: mode === 'code' ? 'pre' : undefined,
-          }}
-        >
-          {char === '\n' ? '\u21b5\n' : char}
-        </span>
+        <Char key={i} $state={state}>
+          {char}
+        </Char>
       );
     });
-  };
+    // The separator between lines is a real character in the target.
+    index++;
+    return <div key={li}>{chars.length > 0 ? chars : ' '}</div>;
+  });
+
+  const record = best[bestKey];
 
   return (
-    <Container onClick={() => inputRef.current?.focus()}>
+    <Container onClick={() => captureRef.current?.focus()}>
       <Header>
-        <ModeSelector>
-          <ModeButton $active={mode === 'words'} onClick={() => setMode('words')}>words</ModeButton>
-          <ModeButton $active={mode === 'code'} onClick={() => setMode('code')}>code</ModeButton>
-          {mode === 'code' && (
-            <>
-              <span style={{ color: theme.colors.muted }}>|</span>
-              {['go', 'python', 'ts'].map(l => (
-                <ModeButton key={l} $active={lang === l} onClick={() => setLang(l)}>{l}</ModeButton>
+        <Options>
+          {(['words', 'code'] as Mode[]).map(m => (
+            <Option
+              key={m}
+              $active={mode === m}
+              onClick={() => {
+                setMode(m);
+                restart(m, lang);
+              }}
+            >
+              {m}
+            </Option>
+          ))}
+          <Divider>│</Divider>
+          {mode === 'words'
+            ? DURATIONS.map(d => (
+                <Option
+                  key={d}
+                  $active={duration === d}
+                  onClick={() => {
+                    setDuration(d);
+                    restart(mode, lang);
+                  }}
+                >
+                  {d}s
+                </Option>
+              ))
+            : LANGS.map(l => (
+                <Option
+                  key={l}
+                  $active={lang === l}
+                  onClick={() => {
+                    setLang(l);
+                    restart(mode, l);
+                  }}
+                >
+                  {l}
+                </Option>
               ))}
-            </>
-          )}
-          {mode === 'words' && (
-            <>
-              <span style={{ color: theme.colors.muted }}>|</span>
-              <span style={{ color: theme.colors.muted, fontSize: 12 }}>{duration}s</span>
-            </>
-          )}
-        </ModeSelector>
-        <span>{started && !finished ? `${timeLeft}s` : ''}</span>
+        </Options>
+        {mode === 'words' && !finished && startedAt !== null && <Timer>{timeLeft}</Timer>}
+        {record && <Best>best {record.wpm} wpm</Best>}
       </Header>
 
-      <WordsDisplay style={{ whiteSpace: mode === 'code' ? 'pre' : 'pre-wrap' }}>
-        {renderTarget()}
-      </WordsDisplay>
+      <Viewport $lines={visible} style={{ whiteSpace: mode === 'code' ? 'pre' : 'pre-wrap' }}>
+        <Scroller $offset={offset}>{rendered}</Scroller>
+      </Viewport>
 
-      <HiddenInput
-        ref={inputRef}
+      <Capture
+        ref={captureRef}
         value={typed}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        autoFocus
         spellCheck={false}
         autoComplete="off"
         autoCapitalize="off"
+        autoCorrect="off"
+        aria-label="Typing test input"
       />
 
       {finished && (
         <Stats>
-          <StatBlock>
-            <StatValue>{wpm}</StatValue>
-            <StatLabel>WPM</StatLabel>
-          </StatBlock>
-          <StatBlock>
-            <StatValue>{accuracy}%</StatValue>
-            <StatLabel>Accuracy</StatLabel>
-          </StatBlock>
-          <StatBlock>
-            <StatValue>{correctChars}</StatValue>
-            <StatLabel>Correct</StatLabel>
-          </StatBlock>
-          <StatBlock>
-            <StatValue>{totalChars - correctChars}</StatValue>
-            <StatLabel>Errors</StatLabel>
-          </StatBlock>
+          <Stat>
+            <StatValue>{stats.wpm}</StatValue>
+            <StatLabel>wpm</StatLabel>
+          </Stat>
+          <Stat>
+            <StatValue>{stats.accuracy}%</StatValue>
+            <StatLabel>accuracy</StatLabel>
+          </Stat>
+          <Stat>
+            <StatValue style={{ color: theme.colors.muted }}>{stats.raw}</StatValue>
+            <StatLabel>raw</StatLabel>
+          </Stat>
+          <Stat>
+            <StatValue style={{ color: theme.colors.muted }}>
+              {stats.correct}/{stats.incorrect}
+            </StatValue>
+            <StatLabel>correct / wrong</StatLabel>
+          </Stat>
         </Stats>
       )}
 
-      <ExitHint>
-        {finished ? 'Press Enter to restart or Escape to exit.' : 'Press Escape to exit. Start typing to begin.'}
-      </ExitHint>
+      <Hint>
+        {finished
+          ? 'Enter to go again, Escape to exit.'
+          : startedAt === null
+            ? 'Start typing to begin. Escape to exit.'
+            : 'Escape to exit.'}
+      </Hint>
     </Container>
   );
 };

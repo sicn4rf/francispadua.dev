@@ -1,18 +1,19 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { useTerminal } from '../hooks/useTerminal';
 import { Output } from './Output';
 import { Prompt } from './Prompt';
 import { WindowFrame } from './WindowFrame';
 import { StatusBar } from './StatusBar';
+import { SidePanel } from './SidePanel';
 import { BANNER_LINES, BOOT_LINES } from '../utils/asciiArt';
 import { audioManager } from '../utils/audioManager';
-import { SidePanel } from './SidePanel';
-import { fadeIn } from '../styles/GlobalStyle';
+import { profile } from '../utils/content';
+import { fadeIn, prefersReducedMotion } from '../styles/GlobalStyle';
 import type { ReactNode } from 'react';
-import type { SidePanelContent } from '../types';
+import type { SidePanelContent, TerminalMode } from '../types';
 
-const TerminalLayout = styled.div`
+const Split = styled.div`
   position: relative;
   flex: 1;
   min-height: 0;
@@ -20,114 +21,147 @@ const TerminalLayout = styled.div`
   overflow: hidden;
 `;
 
-const TerminalBody = styled.div`
+const Body = styled.div`
   flex: 1;
+  min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 1rem 1.25rem;
   cursor: text;
 `;
 
-const InputArea = styled.div`
+const InputRow = styled.div`
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.5rem;
-  min-height: 24px;
+  min-height: 22px;
 `;
 
 const Input = styled.input`
   background: transparent;
   border: none;
   color: ${({ theme }) => theme.colors.foreground};
-  font-family: ${({ theme }) => theme.font};
-  font-size: 14px;
-  flex: 1;
-  outline: none;
-  caret-color: ${({ theme }) => theme.colors.green};
-`;
-
-const BannerLine = styled.div<{ $index: number; $total: number }>`
-  font-size: 6px;
-  line-height: 1.1;
   font-family: inherit;
-  white-space: pre;
-  animation: ${fadeIn} 0.15s ease-out ${p => p.$index * 0.05}s both;
-  color: ${({ $index, $total, theme }) => {
-    const t = $index / ($total - 1);
-    // Pink -> purple gradient (top to bottom)
-    const pink = '#ca9ee6';
-    const purple = theme.colors.accent;
-    const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
-    const parse = (hex: string) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
-    const [r1, g1, b1] = parse(pink);
-    const [r2, g2, b2] = parse(purple);
-    return '#' + [lerp(r1, r2, t), lerp(g1, g2, t), lerp(b1, b2, t)].map(v => v.toString(16).padStart(2, '0')).join('');
-  }};
-
-  @media (min-width: 900px) {
-    font-size: 8px;
-  }
-
-  @media (min-width: 1200px) {
-    font-size: 10px;
-  }
-
-  @media (max-width: 600px) {
-    font-size: 4px;
-  }
+  font-size: inherit;
+  flex: 1;
+  min-width: 0;
+  outline: none;
+  padding: 0;
+  caret-color: ${({ theme }) => theme.colors.accent};
 `;
 
-const BannerContainer = styled.div`
-  margin: 0;
+const Banner = styled.div`
+  margin-bottom: 0.75rem;
+`;
+
+const BannerLine = styled.div<{ $t: number }>`
+  font-size: 9px;
+  line-height: 1.05;
+  white-space: pre;
+  letter-spacing: 0;
+  animation: ${fadeIn} 0.18s ease-out ${p => p.$t * 0.06}s both;
+  /* Blend across the theme's two loudest hues so the ramp is actually visible.
+     The old pink→purple pair differed by ~6% and read as flat. */
+  color: ${({ $t, theme }) => mix(theme.colors.purple, theme.colors.blue, $t)};
+
+  ${prefersReducedMotion} {
+    animation: none;
+  }
+
+  @media (min-width: 700px) {
+    font-size: 11px;
+  }
+  @media (min-width: 1100px) {
+    font-size: 13px;
+  }
+  @media (max-width: 480px) {
+    font-size: 6px;
+  }
 `;
 
 const Subtitle = styled.div`
-  color: ${({ theme }) => theme.colors.muted};
-  margin-top: 0.5rem;
-  margin-bottom: 0.25rem;
-  font-size: 12px;
-  animation: ${fadeIn} 0.5s ease-out 0.2s both;
+  color: ${({ theme }) => theme.colors.foreground};
+  font-size: 12.5px;
+  animation: ${fadeIn} 0.4s ease-out 0.25s both;
+
+  ${prefersReducedMotion} {
+    animation: none;
+  }
 `;
 
 const Hint = styled.div`
   color: ${({ theme }) => theme.colors.muted};
-  margin-bottom: 1.5rem;
-  font-size: 12px;
-  animation: ${fadeIn} 0.5s ease-out 0.4s both;
+  margin-bottom: 1.25rem;
+  font-size: 12.5px;
+  animation: ${fadeIn} 0.4s ease-out 0.4s both;
+
+  ${prefersReducedMotion} {
+    animation: none;
+  }
+
+  b {
+    color: ${({ theme }) => theme.colors.accent};
+    font-weight: 600;
+  }
 `;
 
 const BootLine = styled.div<{ $delay: number }>`
   color: ${({ theme }) => theme.colors.muted};
   font-size: 12px;
+  white-space: pre-wrap;
   animation: ${fadeIn} 0.1s ease-out ${p => p.$delay}s both;
+
+  ${prefersReducedMotion} {
+    animation: none;
+  }
 `;
 
-const ActiveComponentWrapper = styled.div`
+const FullScreen = styled.div`
   padding: 1rem 1.25rem;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
 `;
 
-const CompletionHint = styled.div`
+const Completions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.5rem;
   color: ${({ theme }) => theme.colors.muted};
-  font-size: 12px;
-  padding-left: 0.25rem;
-  margin-bottom: 0.25rem;
+  font-size: 12.5px;
+  margin-bottom: 0.3rem;
 `;
 
-const MobileHint = styled.div`
+const TouchHint = styled.div`
   color: ${({ theme }) => theme.colors.muted};
   font-size: 11px;
   text-align: center;
-  padding: 0.5rem;
-  opacity: 0.6;
+  padding: 0.75rem 0;
   display: none;
 
-  @media (max-width: 768px) {
+  @media (hover: none) and (pointer: coarse) {
     display: block;
   }
 `;
+
+/** Linear blend between two hex colours; `t` runs 0→1 down the banner. */
+function mix(from: string, to: string, t: number): string {
+  const parse = (hex: string) =>
+    [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const [r1, g1, b1] = parse(from);
+  const [r2, g2, b2] = parse(to);
+  const channel = (a: number, b: number) =>
+    Math.round(a + (b - a) * t)
+      .toString(16)
+      .padStart(2, '0');
+  return `#${channel(r1, r2)}${channel(g1, g2)}${channel(b1, b2)}`;
+}
+
+const KONAMI = [
+  'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
+  'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a',
+];
 
 interface TerminalProps {
   currentTheme: string;
@@ -139,12 +173,17 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
   const [soundEnabled, setSoundEnabled] = useState(audioManager.enabled);
   const [soundVolume, setSoundVolume] = useState(audioManager.volume);
   const [activeComponent, setActiveComponent] = useState<ReactNode | null>(null);
-  const [sidePanelContent, setSidePanelContent] = useState<SidePanelContent | null>(null);
+  const [overlay, setOverlay] = useState<ReactNode | null>(null);
+  const [panelContent, setPanelContent] = useState<SidePanelContent | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [input, setInput] = useState('');
   const [booting, setBooting] = useState(true);
   const [completions, setCompletions] = useState<string[]>([]);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const mode: TerminalMode = activeComponent ? 'GAME' : panelOpen ? 'PANE' : 'NORMAL';
 
   const handleSetSound = useCallback((v: boolean) => {
     audioManager.enabled = v;
@@ -157,12 +196,11 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
   }, []);
 
   const openSidePanel = useCallback((content: SidePanelContent) => {
-    setSidePanelContent(content);
+    setPanelContent(content);
+    setPanelOpen(true);
   }, []);
 
-  const closeSidePanel = useCallback(() => {
-    setSidePanelContent(null);
-  }, []);
+  const closeSidePanel = useCallback(() => setPanelOpen(false), []);
 
   const { history, processCommand, navigateHistory, getCompletions } = useTerminal({
     cwd,
@@ -174,46 +212,71 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
     soundVolume,
     setSoundVolume: handleSetVolume,
     setActiveComponent,
+    setOverlay,
     openSidePanel,
   });
 
   useEffect(() => {
-    audioManager.boot();
-    const timer = setTimeout(() => setBooting(false), 1200);
+    const timer = setTimeout(() => setBooting(false), 1100);
     return () => clearTimeout(timer);
   }, []);
 
-  // Konami code: ↑↑↓↓←→←→BA
+  /**
+   * Konami code. Scoped to NORMAL mode — on `window` and always-on it ate the
+   * arrow keys that walk command history, and Snake's steering.
+   */
   useEffect(() => {
-    const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+    if (mode !== 'NORMAL') return;
+
     let seq: string[] = [];
     const handler = (e: KeyboardEvent) => {
-      seq.push(e.key);
-      if (seq.length > KONAMI.length) seq = seq.slice(-KONAMI.length);
-      if (seq.length === KONAMI.length && seq.every((k, i) => k === KONAMI[i])) {
-        seq = [];
-        audioManager.success();
-        // Flash effect
-        document.body.style.transition = 'filter 0.15s';
-        document.body.style.filter = 'invert(1) hue-rotate(180deg)';
-        setTimeout(() => { document.body.style.filter = ''; }, 300);
-        // Unlock secret theme
-        setTheme('matrix');
-        processCommand('cowsay You found the secret! Matrix theme unlocked.');
+      seq = [...seq, e.key].slice(-KONAMI.length);
+      if (seq.length < KONAMI.length || !seq.every((k, i) => k === KONAMI[i])) return;
+
+      seq = [];
+      audioManager.success();
+      setTheme('matrix');
+      processCommand('cowsay Matrix theme unlocked. Try `kubectl get pods` next.');
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [mode, setTheme, processCommand]);
+
+  /** Ctrl-p toggles the pane from anywhere except inside a game. */
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'p' || !e.ctrlKey || activeComponent) return;
+      e.preventDefault();
+      setPanelOpen(open => (panelContent ? !open : open));
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [activeComponent, panelContent]);
+
+  /** Escape closes the pane, but games own Escape while they are running. */
+  useEffect(() => {
+    if (!panelOpen || activeComponent) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setPanelOpen(false);
+        inputRef.current?.focus();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setTheme, processCommand]);
+  }, [panelOpen, activeComponent]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'end',
+    });
   }, [history, booting]);
 
   useEffect(() => {
-    if (!activeComponent && !booting) {
-      inputRef.current?.focus();
-    }
+    if (!activeComponent && !booting) inputRef.current?.focus();
   }, [history, activeComponent, booting]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -222,26 +285,28 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
       setCompletions([]);
       processCommand(input);
       setInput('');
-    } else if (e.key === 'ArrowUp') {
+      return;
+    }
+
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
-      const prev = navigateHistory('up');
-      if (prev !== null) setInput(prev);
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const next = navigateHistory('down');
+      const next = navigateHistory(e.key === 'ArrowUp' ? 'up' : 'down', input);
       if (next !== null) setInput(next);
-    } else if (e.key === 'Tab') {
+      return;
+    }
+
+    if (e.key === 'Tab') {
       e.preventDefault();
-      const matches = getCompletions(input);
-      if (matches.length === 1) {
-        setInput(matches[0]);
-        setCompletions([]);
-      } else if (matches.length > 1) {
-        setCompletions(matches);
-      }
-    } else if (e.key === 'l' && e.ctrlKey) {
+      const { candidates, replacement } = getCompletions(input);
+      if (replacement && replacement !== input) setInput(replacement);
+      setCompletions(candidates.length > 1 ? candidates : []);
+      return;
+    }
+
+    if (e.key === 'l' && e.ctrlKey) {
       e.preventDefault();
       processCommand('clear');
+      setInput('');
     }
   };
 
@@ -251,49 +316,69 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
     audioManager.keystroke();
   };
 
-  const handleContainerClick = () => {
-    inputRef.current?.focus();
-  };
-
-  const statusBar = (
-    <StatusBar cwd={cwd} themeName={currentTheme} soundEnabled={soundEnabled} />
+  const statusBar = useMemo(
+    () => (
+      <StatusBar
+        cwd={cwd}
+        mode={mode}
+        themeName={currentTheme}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => handleSetSound(!soundEnabled)}
+      />
+    ),
+    [cwd, mode, currentTheme, soundEnabled, handleSetSound],
   );
+
+  const title = `visitor@portfolio: ${cwd}`;
 
   if (activeComponent) {
     return (
-      <WindowFrame title={`visitor@portfolio: ${cwd}`} statusBar={statusBar}>
-        <ActiveComponentWrapper>{activeComponent}</ActiveComponentWrapper>
+      <WindowFrame title={title} statusBar={statusBar}>
+        <FullScreen>{activeComponent}</FullScreen>
+        {overlay}
       </WindowFrame>
     );
   }
 
   return (
-    <WindowFrame title={`visitor@portfolio: ${cwd}`} statusBar={statusBar}>
-      <TerminalLayout>
-        <TerminalBody onClick={handleContainerClick}>
+    <WindowFrame title={title} statusBar={statusBar}>
+      <Split>
+        <Body onClick={() => inputRef.current?.focus()}>
           {booting ? (
             BOOT_LINES.map((line, i) => (
-              <BootLine key={i} $delay={i * 0.14}>{line}</BootLine>
+              <BootLine key={line} $delay={i * 0.12}>
+                {line}
+              </BootLine>
             ))
           ) : (
             <>
-              <BannerContainer>
+              <Banner aria-label={profile.name}>
                 {BANNER_LINES.map((line, i) => (
-                  <BannerLine key={i} $index={i} $total={BANNER_LINES.length}>{line}</BannerLine>
+                  <BannerLine key={i} $t={i / (BANNER_LINES.length - 1)} aria-hidden="true">
+                    {line}
+                  </BannerLine>
                 ))}
-              </BannerContainer>
-              <Subtitle>CS @ UCI '27 | Software Developer | Infrastructure Engineer</Subtitle>
-              <Hint>Type <strong style={{ color: 'inherit' }}>'help'</strong> to see available commands.</Hint>
+              </Banner>
+              <Subtitle>{profile.subtitle}</Subtitle>
+              <Hint>
+                Type <b>help</b> to get started, or just type what you would type in a real shell.
+              </Hint>
 
-              {history.map((item) => (
-                <Output key={item.id} item={item} cwd={cwd} />
-              ))}
+              <div aria-live="polite" aria-atomic="false">
+                {history.map(item => (
+                  <Output key={item.id} item={item} />
+                ))}
+              </div>
 
               {completions.length > 1 && (
-                <CompletionHint>{completions.join('  ')}</CompletionHint>
+                <Completions>
+                  {completions.map(c => (
+                    <span key={c}>{c}</span>
+                  ))}
+                </Completions>
               )}
 
-              <InputArea>
+              <InputRow>
                 <Prompt cwd={cwd} />
                 <Input
                   ref={inputRef}
@@ -301,23 +386,21 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
                   value={input}
                   onChange={handleChange}
                   onKeyDown={handleKeyDown}
-                  autoFocus
                   spellCheck={false}
                   autoComplete="off"
+                  autoCorrect="off"
                   autoCapitalize="off"
+                  aria-label="Terminal input"
                 />
-              </InputArea>
-              <MobileHint>Tap anywhere to type</MobileHint>
+              </InputRow>
+              <TouchHint>Tap anywhere to bring up the keyboard.</TouchHint>
               <div ref={bottomRef} />
             </>
           )}
-        </TerminalBody>
-        <SidePanel
-          content={sidePanelContent}
-          open={sidePanelContent !== null}
-          onClose={closeSidePanel}
-        />
-      </TerminalLayout>
+        </Body>
+        <SidePanel content={panelContent} open={panelOpen} onClose={closeSidePanel} />
+      </Split>
+      {overlay}
     </WindowFrame>
   );
 };

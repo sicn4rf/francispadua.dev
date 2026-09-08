@@ -1,4 +1,26 @@
 import '@testing-library/jest-dom/vitest';
+import { beforeEach } from 'vitest';
+
+/**
+ * Node 25 ships its own `localStorage` global that is inert without
+ * `--localstorage-file`, and it shadows the one jsdom installs. Replace it with
+ * a real in-memory Storage, cleared between tests so nothing leaks across them.
+ */
+class MemoryStorage implements Storage {
+  private map = new Map<string, string>();
+  get length() { return this.map.size; }
+  key(i: number) { return [...this.map.keys()][i] ?? null; }
+  getItem(k: string) { return this.map.get(k) ?? null; }
+  setItem(k: string, v: string) { this.map.set(k, String(v)); }
+  removeItem(k: string) { this.map.delete(k); }
+  clear() { this.map.clear(); }
+}
+
+const storage = new MemoryStorage();
+vi.stubGlobal('localStorage', storage);
+vi.stubGlobal('sessionStorage', new MemoryStorage());
+
+beforeEach(() => storage.clear());
 
 // jsdom implements neither the Web Audio API nor matchMedia; the terminal
 // touches both on mount.

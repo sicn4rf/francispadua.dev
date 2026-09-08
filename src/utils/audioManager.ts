@@ -5,18 +5,48 @@ class AudioManager {
   private _volume = 0.3;
   private _enabled: boolean;
   private _style: SoundStyle;
+  /** Browsers refuse to start an AudioContext before a user gesture. */
+  private unlocked = false;
+  private pendingBoot = false;
 
   constructor() {
     this._enabled = localStorage.getItem('portfolio:sound') !== 'off';
     const savedVol = localStorage.getItem('portfolio:sound-volume');
     if (savedVol) this._volume = parseFloat(savedVol);
     this._style = (localStorage.getItem('portfolio:sound-style') as SoundStyle) || 'thocky';
+
+    if (typeof window !== 'undefined') {
+      const unlock = () => this.unlock();
+      // `once` on each, so the first gesture of any kind wins.
+      for (const evt of ['pointerdown', 'keydown', 'touchstart'] as const) {
+        window.addEventListener(evt, unlock, { once: true, passive: true });
+      }
+    }
+  }
+
+  /**
+   * Called from the first real user gesture. The previous version created the
+   * context in a mount effect, where Chrome parks it in `suspended` and every
+   * sound — including the boot chime — is silently dropped.
+   */
+  private unlock() {
+    if (this.unlocked) return;
+    this.unlocked = true;
+    if (this.pendingBoot) {
+      this.pendingBoot = false;
+      this.boot();
+    }
   }
 
   private getCtx(): AudioContext {
     if (!this.ctx) this.ctx = new AudioContext();
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    if (this.ctx.state === 'suspended') void this.ctx.resume();
     return this.ctx;
+  }
+
+  /** True when a sound may actually be produced right now. */
+  private get live() {
+    return this._enabled && this.unlocked;
   }
 
   get enabled() { return this._enabled; }
@@ -38,7 +68,7 @@ class AudioManager {
   }
 
   private playTone(freq: number, duration: number, type: OscillatorType = 'sine', vol?: number) {
-    if (!this._enabled) return;
+    if (!this.live) return;
     const ctx = this.getCtx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -230,7 +260,7 @@ class AudioManager {
   }
 
   private playKey(pitchBase: number, vol?: number) {
-    if (!this._enabled) return;
+    if (!this.live) return;
     switch (this._style) {
       case 'poppy': this.playPoppy(pitchBase, vol); break;
       case 'clacky': this.playClacky(pitchBase, vol); break;
@@ -259,6 +289,10 @@ class AudioManager {
   }
 
   boot() {
+    if (!this.unlocked) {
+      this.pendingBoot = true;
+      return;
+    }
     this.playTone(220, 0.1, 'sine');
     setTimeout(() => this.playTone(330, 0.1, 'sine'), 100);
     setTimeout(() => this.playTone(440, 0.15, 'sine'), 200);

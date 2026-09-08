@@ -1,42 +1,40 @@
 import styled from 'styled-components';
 import type { HistoryItem } from '../types';
 import { Prompt } from './Prompt';
-import { fadeIn } from '../styles/GlobalStyle';
+import { fadeIn, prefersReducedMotion } from '../styles/GlobalStyle';
 
-const OutputContainer = styled.div`
-  margin-bottom: 0.75rem;
-  animation: ${fadeIn} 0.15s ease-out;
+const Block = styled.div`
+  margin-bottom: 0.85rem;
+  animation: ${fadeIn} 0.12s ease-out;
+
+  ${prefersReducedMotion} {
+    animation: none;
+  }
 `;
 
 const CommandRow = styled.div`
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.5rem;
   margin-bottom: 0.25rem;
+  flex-wrap: wrap;
 `;
 
 const CommandText = styled.span`
-  color: ${({ theme }) => theme.colors.accent};
+  color: ${({ theme }) => theme.colors.command};
 `;
 
-const ResultContainer = styled.div`
+const Result = styled.div`
   color: ${({ theme }) => theme.colors.result};
-  padding-left: 0.25rem;
 `;
 
-interface OutputProps {
-  item: HistoryItem;
-  cwd: string;
-}
-
-export const Output = ({ item, cwd }: OutputProps) => {
-  return (
-    <OutputContainer>
-      <CommandRow>
-        <Prompt cwd={cwd} />
-        <CommandText>{item.command}</CommandText>
-      </CommandRow>
-      {item.output && <ResultContainer>{item.output}</ResultContainer>}
-    </OutputContainer>
-  );
-};
+export const Output = ({ item }: { item: HistoryItem }) => (
+  <Block>
+    <CommandRow>
+      {/* The cwd is captured per-entry, so scrollback keeps the prompt it ran under. */}
+      <Prompt cwd={item.cwd} />
+      <CommandText>{item.command}</CommandText>
+    </CommandRow>
+    {item.output ? <Result>{item.output}</Result> : null}
+  </Block>
+);

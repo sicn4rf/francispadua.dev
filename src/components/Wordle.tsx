@@ -1,252 +1,266 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import styled from 'styled-components';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import styled, { keyframes } from 'styled-components';
+import { audioManager } from '../utils/audioManager';
+import {
+  MAX_GUESSES,
+  WORD_LENGTH,
+  WORDS,
+  isValidWord,
+  keyStates,
+  markGuess,
+  recordGame,
+  loadStats,
+  type KeyState,
+  type LetterState,
+} from '../utils/wordle';
 
-const WORDS = [
-  'crane', 'slate', 'trace', 'audio', 'raise', 'stare', 'arise', 'learn',
-  'stern', 'crate', 'irate', 'snare', 'adieu', 'route', 'saint', 'outer',
-  'react', 'train', 'plant', 'share', 'heart', 'stone', 'smart', 'ocean',
-  'earth', 'house', 'light', 'world', 'night', 'water', 'dream', 'space',
-  'brain', 'cloud', 'flame', 'steel', 'pearl', 'tiger', 'quiet', 'waste',
-  'solid', 'royal', 'panel', 'rapid', 'blend', 'frost', 'brave', 'grace',
-  'prime', 'drift', 'scope', 'focus', 'pixel', 'stack', 'debug', 'build',
-  'parse', 'query', 'cache', 'fetch', 'proxy', 'merge', 'patch', 'trunk',
-];
+type CellState = LetterState | 'empty' | 'active';
 
-const MAX_GUESSES = 6;
+const shake = keyframes`
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-5px); }
+  60%      { transform: translateX(5px); }
+`;
 
 const Container = styled.div`
-  font-family: ${({ theme }) => theme.font};
-  max-width: 300px;
+  max-width: 330px;
   margin: 0 auto;
 `;
 
 const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
   margin-bottom: 1rem;
   color: ${({ theme }) => theme.colors.muted};
   font-size: 12px;
 `;
 
-const Row = styled.div`
+const Row = styled.div<{ $invalid?: boolean }>`
   display: flex;
-  gap: 4px;
-  margin-bottom: 4px;
+  gap: 5px;
+  margin-bottom: 5px;
   justify-content: center;
+  animation: ${p => (p.$invalid ? shake : 'none')} 0.3s ease;
 `;
 
-const Cell = styled.div<{ $state: 'correct' | 'present' | 'absent' | 'empty' | 'active' }>`
-  width: 40px;
-  height: 40px;
+const Cell = styled.div<{ $state: CellState }>`
+  width: 46px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  font-size: 16px;
+  font-weight: 700;
+  font-size: 19px;
   text-transform: uppercase;
   border-radius: 4px;
-  border: 2px solid ${({ theme, $state }) => {
-    if ($state === 'empty') return theme.colors.surface;
-    if ($state === 'active') return theme.colors.muted;
-    return 'transparent';
-  }};
-  background: ${({ theme, $state }) => {
-    if ($state === 'correct') return theme.colors.green;
-    if ($state === 'present') return theme.colors.yellow;
-    if ($state === 'absent') return theme.colors.surface;
-    return 'transparent';
-  }};
-  color: ${({ theme, $state }) => {
-    if ($state === 'correct' || $state === 'present') return theme.colors.background;
-    return theme.colors.foreground;
-  }};
-  transition: background 0.2s, border-color 0.2s;
+  border: 2px solid
+    ${({ theme, $state }) =>
+      $state === 'empty'
+        ? theme.colors.overlay
+        : $state === 'active'
+          ? theme.colors.muted
+          : 'transparent'};
+  background: ${({ theme, $state }) =>
+    $state === 'correct'
+      ? theme.colors.green
+      : $state === 'present'
+        ? theme.colors.yellow
+        : $state === 'absent'
+          ? theme.colors.overlay
+          : 'transparent'};
+  color: ${({ theme, $state }) =>
+    $state === 'correct' || $state === 'present'
+      ? theme.colors.background
+      : theme.colors.foreground};
+  transition: background 0.15s, border-color 0.15s;
 `;
 
 const Keyboard = styled.div`
-  margin-top: 1rem;
+  margin-top: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 `;
 
 const KeyRow = styled.div`
   display: flex;
-  gap: 3px;
+  gap: 4px;
   justify-content: center;
 `;
 
-const Key = styled.span<{ $state: 'correct' | 'present' | 'absent' | 'unused' }>`
-  padding: 4px 6px;
+const Key = styled.button<{ $state: KeyState }>`
+  padding: 8px 0;
+  width: 28px;
+  border: none;
   border-radius: 3px;
-  font-size: 11px;
+  font-family: inherit;
+  font-size: 12px;
   text-transform: uppercase;
-  min-width: 20px;
-  text-align: center;
-  background: ${({ theme, $state }) => {
-    if ($state === 'correct') return theme.colors.green;
-    if ($state === 'present') return theme.colors.yellow;
-    if ($state === 'absent') return theme.colors.surface;
-    return theme.colors.surface;
-  }};
-  color: ${({ theme, $state }) => {
-    if ($state === 'correct' || $state === 'present') return '#1e1e2e';
-    if ($state === 'absent') return theme.colors.muted;
-    return theme.colors.foreground;
-  }};
-  opacity: ${({ $state }) => $state === 'absent' ? 0.5 : 1};
+  cursor: pointer;
+  background: ${({ theme, $state }) =>
+    $state === 'correct'
+      ? theme.colors.green
+      : $state === 'present'
+        ? theme.colors.yellow
+        : theme.colors.overlay};
+  color: ${({ theme, $state }) =>
+    $state === 'correct' || $state === 'present'
+      ? theme.colors.background
+      : $state === 'absent'
+        ? theme.colors.muted
+        : theme.colors.foreground};
+  opacity: ${({ $state }) => ($state === 'absent' ? 0.45 : 1)};
 `;
 
-const Message = styled.div`
+const Message = styled.div<{ $tone: 'win' | 'lose' | 'warn' }>`
   margin-top: 1rem;
-  color: ${({ theme }) => theme.colors.yellow};
+  text-align: center;
+  color: ${({ theme, $tone }) =>
+    $tone === 'win' ? theme.colors.green : $tone === 'lose' ? theme.colors.red : theme.colors.yellow};
 `;
 
 const Hint = styled.div`
   color: ${({ theme }) => theme.colors.muted};
   font-size: 11px;
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
+  text-align: center;
 `;
 
-const KEYBOARD_ROWS = [
-  'qwertyuiop'.split(''),
-  'asdfghjkl'.split(''),
-  'zxcvbnm'.split(''),
-];
+const KEYBOARD_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'].map(r => r.split(''));
 
-interface WordleProps {
-  onExit: () => void;
-}
+const pickWord = () => WORDS[Math.floor(Math.random() * WORDS.length)];
 
-const Wordle = ({ onExit }: WordleProps) => {
-  const [answer] = useState(() => WORDS[Math.floor(Math.random() * WORDS.length)]);
+const Wordle = ({ onExit }: { onExit: () => void }) => {
+  const [answer, setAnswer] = useState(pickWord);
   const [guesses, setGuesses] = useState<string[]>([]);
   const [current, setCurrent] = useState('');
-  const [gameOver, setGameOver] = useState(false);
-  const [won, setWon] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [status, setStatus] = useState<'playing' | 'won' | 'lost'>('playing');
+  const [invalid, setInvalid] = useState(false);
+  const [stats, setStats] = useState(loadStats);
 
-  const getLetterState = (guess: string, index: number): 'correct' | 'present' | 'absent' => {
-    if (guess[index] === answer[index]) return 'correct';
-    if (answer.includes(guess[index])) return 'present';
-    return 'absent';
-  };
+  const keys = useMemo(() => keyStates(guesses, answer), [guesses, answer]);
+  const marks = useMemo(() => guesses.map(g => markGuess(g, answer)), [guesses, answer]);
 
-  const getKeyState = useCallback((letter: string): 'correct' | 'present' | 'absent' | 'unused' => {
-    let best: 'correct' | 'present' | 'absent' | 'unused' = 'unused';
-    for (const guess of guesses) {
-      for (let i = 0; i < guess.length; i++) {
-        if (guess[i] === letter) {
-          const state = getLetterState(guess, i);
-          if (state === 'correct') return 'correct';
-          if (state === 'present') best = 'present';
-          if (state === 'absent' && best === 'unused') best = 'absent';
-        }
-      }
-    }
-    return best;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [guesses, answer]);
-
-  const updateStats = useCallback((didWin: boolean) => {
-    const raw = localStorage.getItem('portfolio:wordle-stats');
-    const stats = raw ? JSON.parse(raw) : { played: 0, won: 0, streak: 0 };
-    stats.played++;
-    if (didWin) { stats.won++; stats.streak++; }
-    else { stats.streak = 0; }
-    localStorage.setItem('portfolio:wordle-stats', JSON.stringify(stats));
+  const reset = useCallback(() => {
+    setAnswer(pickWord());
+    setGuesses([]);
+    setCurrent('');
+    setStatus('playing');
+    setInvalid(false);
   }, []);
 
-  const handleKey = useCallback((e: KeyboardEvent) => {
-    e.stopPropagation();
-    if (e.key === 'Escape') { e.preventDefault(); onExit(); return; }
-    if (gameOver) {
-      if (e.key === 'Enter') {
-        // Reload component
-        onExit();
-      }
+  const submit = useCallback(() => {
+    if (current.length !== WORD_LENGTH) return;
+
+    if (!isValidWord(current)) {
+      // Reject rather than burn a guess on a non-word.
+      setInvalid(true);
+      audioManager.error();
+      setTimeout(() => setInvalid(false), 350);
       return;
     }
 
-    if (e.key === 'Enter' && current.length === 5) {
-      const newGuesses = [...guesses, current];
-      setGuesses(newGuesses);
-      if (current === answer) {
-        setGameOver(true);
-        setWon(true);
-        updateStats(true);
-      } else if (newGuesses.length >= MAX_GUESSES) {
-        setGameOver(true);
-        updateStats(false);
-      }
-      setCurrent('');
-    } else if (e.key === 'Backspace') {
-      setCurrent(prev => prev.slice(0, -1));
-    } else if (/^[a-zA-Z]$/.test(e.key) && current.length < 5) {
-      setCurrent(prev => prev + e.key.toLowerCase());
+    const next = [...guesses, current];
+    setGuesses(next);
+    setCurrent('');
+
+    if (current === answer) {
+      setStatus('won');
+      setStats(recordGame(true));
+      audioManager.success();
+    } else if (next.length >= MAX_GUESSES) {
+      setStatus('lost');
+      setStats(recordGame(false));
+      audioManager.error();
     }
-  }, [current, guesses, answer, gameOver, onExit, updateStats]);
+  }, [current, guesses, answer]);
+
+  const press = useCallback(
+    (key: string) => {
+      if (status !== 'playing') {
+        if (key === 'Enter') reset();
+        return;
+      }
+      if (key === 'Enter') return submit();
+      if (key === 'Backspace') return setCurrent(prev => prev.slice(0, -1));
+      if (/^[a-zA-Z]$/.test(key) && current.length < WORD_LENGTH) {
+        audioManager.keystroke();
+        setCurrent(prev => prev + key.toLowerCase());
+      }
+    },
+    [status, current, submit, reset],
+  );
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [handleKey]);
-
-  useEffect(() => {
-    containerRef.current?.focus();
-  }, []);
-
-  const renderRow = (guess: string | null, rowIndex: number) => {
-    const isCurrentRow = rowIndex === guesses.length && !gameOver;
-    const cells = [];
-
-    for (let i = 0; i < 5; i++) {
-      let char = '';
-      let state: 'correct' | 'present' | 'absent' | 'empty' | 'active' = 'empty';
-
-      if (guess) {
-        char = guess[i];
-        state = getLetterState(guess, i);
-      } else if (isCurrentRow && i < current.length) {
-        char = current[i];
-        state = 'active';
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onExit();
+        return;
       }
+      // Stop arrow keys and letters reaching the terminal behind the game.
+      e.stopPropagation();
+      press(e.key);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [press, onExit]);
 
-      cells.push(<Cell key={i} $state={state}>{char}</Cell>);
+  const cellState = (row: number, col: number): CellState => {
+    if (row < guesses.length) return marks[row][col];
+    if (row === guesses.length && status === 'playing') {
+      return col < current.length ? 'active' : 'empty';
     }
-
-    return <Row key={rowIndex}>{cells}</Row>;
+    return 'empty';
   };
 
-  const rows = [];
-  for (let i = 0; i < MAX_GUESSES; i++) {
-    rows.push(renderRow(guesses[i] || null, i));
-  }
+  const letter = (row: number, col: number) =>
+    row < guesses.length ? guesses[row][col] : row === guesses.length ? current[col] ?? '' : '';
 
   return (
-    <Container ref={containerRef} tabIndex={0}>
-      <Header>WORDLE — Guess the 5-letter word</Header>
+    <Container>
+      <Header>
+        <span>WORDLE</span>
+        <span>
+          {stats.played > 0 && `${stats.won}/${stats.played} · streak ${stats.streak}`}
+        </span>
+      </Header>
 
-      {rows}
+      {Array.from({ length: MAX_GUESSES }, (_, row) => (
+        <Row key={row} $invalid={invalid && row === guesses.length}>
+          {Array.from({ length: WORD_LENGTH }, (_, col) => (
+            <Cell key={col} $state={cellState(row, col)}>
+              {letter(row, col)}
+            </Cell>
+          ))}
+        </Row>
+      ))}
 
       <Keyboard>
         {KEYBOARD_ROWS.map((row, i) => (
           <KeyRow key={i}>
-            {row.map(letter => (
-              <Key key={letter} $state={getKeyState(letter)}>{letter}</Key>
+            {row.map(l => (
+              <Key key={l} $state={keys.get(l) ?? 'unused'} onClick={() => press(l)}>
+                {l}
+              </Key>
             ))}
           </KeyRow>
         ))}
       </Keyboard>
 
-      {gameOver && (
-        <Message>
-          {won
-            ? `You got it in ${guesses.length}/${MAX_GUESSES}!`
-            : `The word was "${answer}".`}
+      {invalid && <Message $tone="warn">Not in word list.</Message>}
+
+      {status === 'won' && (
+        <Message $tone="win">
+          Got it in {guesses.length}/{MAX_GUESSES}.
         </Message>
       )}
+      {status === 'lost' && <Message $tone="lose">The word was “{answer}”.</Message>}
 
       <Hint>
-        {gameOver ? 'Press Escape to exit.' : 'Type a 5-letter word and press Enter. Escape to exit.'}
+        {status === 'playing'
+          ? 'Type a 5-letter word and press Enter. Escape to exit.'
+          : 'Press Enter to play again, or Escape to exit.'}
       </Hint>
     </Container>
   );

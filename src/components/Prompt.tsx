@@ -1,52 +1,42 @@
 import styled from 'styled-components';
 
-const PromptContainer = styled.span`
+const Container = styled.span`
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   white-space: nowrap;
+  user-select: none;
 `;
 
 const User = styled.span`
-  color: ${({ theme }) => theme.colors.blue};
-`;
-
-const At = styled.span`
-  color: ${({ theme }) => theme.colors.purple};
-`;
-
-const Host = styled.span`
   color: ${({ theme }) => theme.colors.green};
 `;
 
-const Sep = styled.span`
-  color: ${({ theme }) => theme.colors.yellow};
+const At = styled.span`
+  color: ${({ theme }) => theme.colors.muted};
+`;
+
+const Host = styled.span`
+  color: ${({ theme }) => theme.colors.teal};
 `;
 
 const Path = styled.span`
   color: ${({ theme }) => theme.colors.blue};
-  font-weight: bold;
+  font-weight: 600;
+  margin-left: 0.5ch;
 `;
 
-const Dollar = styled.span`
-  color: ${({ theme }) => theme.colors.yellow};
-  margin-left: 4px;
+const Sigil = styled.span`
+  color: ${({ theme }) => theme.colors.accent};
+  margin-left: 0.5ch;
+  margin-right: 0.25ch;
 `;
 
-interface PromptProps {
-  cwd?: string;
-}
-
-export const Prompt = ({ cwd = '~' }: PromptProps) => {
-  const displayPath = cwd === '~' ? '~' : cwd.replace(/^~/, '~');
-
-  return (
-    <PromptContainer>
-      <User>visitor</User>
-      <At>@</At>
-      <Host>portfolio</Host>
-      <Sep>:</Sep>
-      <Path>{displayPath}</Path>
-      <Dollar>$</Dollar>
-    </PromptContainer>
-  );
-};
+export const Prompt = ({ cwd = '~' }: { cwd?: string }) => (
+  <Container aria-hidden="true">
+    <User>visitor</User>
+    <At>@</At>
+    <Host>portfolio</Host>
+    <Path>{cwd}</Path>
+    <Sigil>❯</Sigil>
+  </Container>
+);

@@ -1,22 +1,23 @@
-import { createGlobalStyle, keyframes } from 'styled-components';
+import { createGlobalStyle, keyframes, css } from 'styled-components';
 import { normalize } from 'styled-normalize';
 
-const fadeIn = keyframes`
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+export const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
 `;
 
-const blink = keyframes`
+export const blink = keyframes`
   0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  50%      { opacity: 0; }
 `;
 
-export { fadeIn, blink };
+/** Guard for motion-sensitive rules: `${prefersReducedMotion} { animation: none; }` */
+export const prefersReducedMotion = css`
+  @media (prefers-reduced-motion: reduce)
+`;
 
 export const GlobalStyle = createGlobalStyle`
   ${normalize}
-
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
 
   *, *::before, *::after {
     box-sizing: border-box;
@@ -35,35 +36,54 @@ export const GlobalStyle = createGlobalStyle`
     font-size: 14px;
     line-height: 1.6;
     overflow: hidden;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: background-color 0.25s ease, color 0.25s ease;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
   }
 
   a {
     color: ${({ theme }) => theme.colors.link};
     text-decoration: none;
+
     &:hover {
       text-decoration: underline;
     }
   }
 
+  /* Keyboard users need to see where they are; mouse users do not need the ring. */
+  :focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.accent};
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
   ::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: ${({ theme }) => theme.colors.surface};
-    border-radius: 3px;
+    background: ${({ theme }) => theme.colors.overlay};
+    border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: ${({ theme }) => theme.colors.muted};
   }
 
   ::selection {
-    background: ${({ theme }) => theme.colors.accent}33;
+    background: ${({ theme }) => theme.colors.accent}44;
     color: ${({ theme }) => theme.colors.foreground};
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 `;
