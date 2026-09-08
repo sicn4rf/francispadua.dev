@@ -5,6 +5,7 @@
  * the roles are pods, the institutions are nodes, the projects are Helm
  * releases. An easter egg should teach you something true.
  */
+import styled from 'styled-components';
 import type { Command } from '../types';
 import { experience, projects } from './content';
 import { panelData } from './panelData';
@@ -136,6 +137,27 @@ const NODES = [
   ['vercel-edge', 'Ready', '<none>', '1m', 'v1.32.0'],
 ];
 
+const EventList = styled.ul`
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 2ch;
+
+  li {
+    display: grid;
+    grid-template-columns: 8ch 9ch 1fr;
+    gap: 0 1ch;
+    margin-bottom: 0.15rem;
+  }
+`;
+
+const EventType = styled.span`
+  color: ${({ theme }) => theme.colors.green};
+`;
+
+const EventReason = styled.span`
+  color: ${({ theme }) => theme.colors.muted};
+`;
+
 const findPod = (query: string): Pod | undefined =>
   PODS.find(p => p.name === query) ??
   PODS.find(p => p.name.startsWith(query)) ??
@@ -249,9 +271,17 @@ const describePod = (query: string, openPanel: (c: (typeof panelData)[string]) =
       {bullets.length > 0 && (
         <>
           <SectionTitle>Events</SectionTitle>
-          <Pre>
-            {bullets.map(b => `  Normal   Shipped   ${b}`).join('\n')}
-          </Pre>
+          {/* Wrapped, not <Pre> — these lines are prose and would otherwise run
+              off the edge once the pane takes half the width. */}
+          <EventList>
+            {bullets.map(b => (
+              <li key={b}>
+                <EventType>Normal</EventType>
+                <EventReason>Shipped</EventReason>
+                <span>{b}</span>
+              </li>
+            ))}
+          </EventList>
         </>
       )}
       <Muted>

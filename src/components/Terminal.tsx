@@ -399,8 +399,8 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
           )}
         </Body>
         <SidePanel content={panelContent} open={panelOpen} onClose={closeSidePanel} />
+        {overlay}
       </Split>
-      {overlay}
     </WindowFrame>
   );
 };

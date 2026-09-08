@@ -57,10 +57,12 @@ const MatrixRain = ({ duration = 6000, onDone }: { duration?: number; onDone: ()
       canvas.height = height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+      const rows = height / fontSize;
       const next = Math.ceil(width / fontSize);
-      // Preserve existing column positions so a resize doesn't restart the rain.
+      // Seed across the full height rather than all above the top edge, so the
+      // screen is full from the first frame instead of empty for a second.
       drops = Array.from({ length: next }, (_, i) =>
-        i < columns ? drops[i] : Math.random() * -50,
+        i < columns ? drops[i] : Math.random() * rows * 1.5 - rows * 0.5,
       );
       columns = next;
 
@@ -84,10 +86,14 @@ const MatrixRain = ({ duration = 6000, onDone }: { duration?: number; onDone: ()
         const char = CHARS[(Math.random() * CHARS.length) | 0];
         const y = drops[i] * fontSize;
 
-        ctx.fillStyle = Math.random() > 0.94 ? '#d6ffd6' : '#00ff41';
+        // A bright head over a dimmer tail is what reads as "falling".
+        ctx.fillStyle = '#d6ffd6';
         ctx.fillText(char, i * fontSize, y);
+        ctx.fillStyle = '#00ff41';
+        ctx.fillText(CHARS[(Math.random() * CHARS.length) | 0], i * fontSize, y - fontSize);
 
-        if (y > height && Math.random() > 0.975) drops[i] = 0;
+        // Recycle shortly after leaving the bottom, so columns are rarely idle.
+        if (y > height) drops[i] = Math.random() * -25;
         drops[i]++;
       }
 
