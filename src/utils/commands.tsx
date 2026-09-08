@@ -140,8 +140,12 @@ const InfoValue = styled.span`
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
+/**
+ * `key` doubles as the React key: this is the element returned from the .map()
+ * calls below, so a key on the children inside would not count.
+ */
 const panel = (key: string, ctx: TerminalContext, children: React.ReactNode) => (
-  <ClickableItem panel={panelData[key]} openSidePanel={ctx.openSidePanel}>
+  <ClickableItem key={key} panel={panelData[key]} openSidePanel={ctx.openSidePanel}>
     {children}
   </ClickableItem>
 );
