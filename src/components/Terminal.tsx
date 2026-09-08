@@ -6,7 +6,7 @@ import { Prompt } from './Prompt';
 import { WindowFrame } from './WindowFrame';
 import { StatusBar } from './StatusBar';
 import { SidePanel } from './SidePanel';
-import { BANNER_LINES, BOOT_LINES } from '../utils/asciiArt';
+import { BANNER_LINES, BOOT_LINES, bannerRuns } from '../utils/asciiArt';
 import { audioManager } from '../utils/audioManager';
 import { profile } from '../utils/content';
 import { fadeIn, prefersReducedMotion } from '../styles/GlobalStyle';
@@ -56,10 +56,9 @@ const Banner = styled.div`
 `;
 
 const BannerLine = styled.div<{ $t: number }>`
-  font-size: 9px;
-  line-height: 1.05;
+  font-size: 7px;
+  line-height: 1.08;
   white-space: pre;
-  letter-spacing: 0;
   animation: ${fadeIn} 0.18s ease-out ${p => p.$t * 0.06}s both;
   /* Blend across the theme's two loudest hues so the ramp is actually visible.
      The old pink→purple pair differed by ~6% and read as flat. */
@@ -70,14 +69,23 @@ const BannerLine = styled.div<{ $t: number }>`
   }
 
   @media (min-width: 700px) {
-    font-size: 11px;
+    font-size: 9px;
   }
   @media (min-width: 1100px) {
-    font-size: 13px;
+    font-size: 11px;
   }
   @media (max-width: 480px) {
-    font-size: 6px;
+    font-size: 5px;
   }
+`;
+
+/**
+ * The ░ drop-shadow layer of the DOS Rebel font. At full weight it interleaves
+ * with the █ face and the whole wordmark reads as checkerboard; held well back
+ * it does the job the font intends and gives the letters depth.
+ */
+const BannerShadow = styled.span`
+  opacity: 0.28;
 `;
 
 const Subtitle = styled.div`
@@ -352,10 +360,16 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
             ))
           ) : (
             <>
-              <Banner aria-label={profile.name}>
+              <Banner role="img" aria-label={profile.name}>
                 {BANNER_LINES.map((line, i) => (
                   <BannerLine key={i} $t={i / (BANNER_LINES.length - 1)} aria-hidden="true">
-                    {line}
+                    {bannerRuns(line).map((run, j) =>
+                      run.shadow ? (
+                        <BannerShadow key={j}>{run.text}</BannerShadow>
+                      ) : (
+                        <span key={j}>{run.text}</span>
+                      ),
+                    )}
                   </BannerLine>
                 ))}
               </Banner>

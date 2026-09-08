@@ -1,17 +1,39 @@
 /**
- * ANSI Shadow. The previous banner used DOS Rebel, whose ░ shadow glyphs
- * dissolve into checkerboard noise below ~12px — which is exactly the size the
- * banner has to render at to fit. This font is solid blocks and box drawing,
- * so it stays crisp small.
+ * figlet -f "DOS Rebel" -w 999 ">FRANCIS"
+ *
+ * The font draws letterforms in two glyphs: █ is the face, ░ is the drop
+ * shadow. Rendered at one weight they interleave into checkerboard noise at
+ * the size this has to display at, which is why the shadow layer is dimmed —
+ * see `bannerRuns`.
  */
 export const BANNER_LINES = [
-  '███████╗██████╗  █████╗ ███╗   ██╗ ██████╗██╗███████╗',
-  '██╔════╝██╔══██╗██╔══██╗████╗  ██║██╔════╝██║██╔════╝',
-  '█████╗  ██████╔╝███████║██╔██╗ ██║██║     ██║███████╗',
-  '██╔══╝  ██╔══██╗██╔══██║██║╚██╗██║██║     ██║╚════██║',
-  '██║     ██║  ██║██║  ██║██║ ╚████║╚██████╗██║███████║',
-  '╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝╚═╝╚══════╝',
+  ' ███       ███████████ ███████████     █████████   ██████   █████   █████████  █████  █████████ ',
+  '░░░███    ░░███░░░░░░█░░███░░░░░███   ███░░░░░███ ░░██████ ░░███   ███░░░░░███░░███  ███░░░░░███',
+  '  ░░░███   ░███   █ ░  ░███    ░███  ░███    ░███  ░███░███ ░███  ███     ░░░  ░███ ░███    ░░░ ',
+  '    ░░░███ ░███████    ░██████████   ░███████████  ░███░░███░███ ░███          ░███ ░░█████████ ',
+  '     ███░  ░███░░░█    ░███░░░░░███  ░███░░░░░███  ░███ ░░██████ ░███          ░███  ░░░░░░░░███',
+  '   ███░    ░███  ░     ░███    ░███  ░███    ░███  ░███  ░░█████ ░░███     ███ ░███  ███    ░███',
+  ' ███░      █████       █████   █████ █████   █████ █████  ░░█████ ░░█████████  █████░░█████████ ',
+  '░░░       ░░░░░       ░░░░░   ░░░░░ ░░░░░   ░░░░░ ░░░░░    ░░░░░   ░░░░░░░░░  ░░░░░  ░░░░░░░░░  ',
 ];
+
+/**
+ * Splits a banner line into face and shadow runs so the two can be painted at
+ * different intensities. Adjacent same-kind characters coalesce into one run,
+ * which keeps the span count down to a handful per line.
+ */
+export function bannerRuns(line: string): { text: string; shadow: boolean }[] {
+  const runs: { text: string; shadow: boolean }[] = [];
+
+  for (const char of line) {
+    const shadow = char === '░';
+    const last = runs[runs.length - 1];
+    if (last && last.shadow === shadow) last.text += char;
+    else runs.push({ text: char, shadow });
+  }
+
+  return runs;
+}
 
 export const BOOT_LINES = [
   '[  0.000000] Booting portfolio-term 2.0',
