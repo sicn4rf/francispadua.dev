@@ -6,11 +6,6 @@ export const fadeIn = keyframes`
   to   { opacity: 1; transform: translateY(0); }
 `;
 
-export const blink = keyframes`
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0; }
-`;
-
 /** Guard for motion-sensitive rules: `${prefersReducedMotion} { animation: none; }` */
 export const prefersReducedMotion = css`
   @media (prefers-reduced-motion: reduce)

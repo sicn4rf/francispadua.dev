@@ -901,7 +901,3 @@ export const commands: Record<string, Command> = {
     ),
   },
 };
-
-/** Commands offered by tab-completion and listed by `help`, minus the eggs. */
-export const isHiddenCommand = (name: string) =>
-  ['k', 'tt', 'vim', 'nvim', 'exit', 'rm', 'sudo'].includes(name);
