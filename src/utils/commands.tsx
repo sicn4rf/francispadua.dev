@@ -162,6 +162,12 @@ const launch = (
   return '';
 };
 
+/** `now` sections that have a panel worth opening. */
+const NOW_PANELS: Record<string, string> = {
+  Reading: 'now.reading',
+  Watching: 'now.watching',
+};
+
 /* ── Command table ──────────────────────────────────────────────────────── */
 
 export const commands: Record<string, Command> = {
@@ -360,13 +366,11 @@ export const commands: Record<string, Command> = {
   now: {
     cmd: 'now',
     desc: 'What I am doing at the moment',
-    action: (_args, ctx) =>
-      panel(
-        'now',
-        ctx,
-        <div>
-          {Object.entries(now).map(([section, items]) => (
-            <div key={section} style={{ marginBottom: '0.5rem' }}>
+    action: (_args, ctx) => (
+      <div>
+        {Object.entries(now).map(([section, items]) => {
+          const body = (
+            <div style={{ marginBottom: '0.5rem' }}>
               <SectionTitle>{section}</SectionTitle>
               <List>
                 {items.map((item, i) => (
@@ -374,10 +378,20 @@ export const commands: Record<string, Command> = {
                 ))}
               </List>
             </div>
-          ))}
-          <Meta>Last updated September 2026.</Meta>
-        </div>,
-      ),
+          );
+
+          // Sections with their own panel (covers, art) are clickable; the
+          // rest are plain text rather than a link to nothing.
+          const key = NOW_PANELS[section];
+          return (
+            <React.Fragment key={section}>
+              {key ? panel(key, ctx, body) : body}
+            </React.Fragment>
+          );
+        })}
+        <Meta>Last updated September 2026.</Meta>
+      </div>
+    ),
   },
 
   contact: {

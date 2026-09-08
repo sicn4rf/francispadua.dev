@@ -57,7 +57,7 @@ export interface PanelSection {
 export type PanelSectionData =
   | { kind: 'image'; alt: string; src?: string }
   | { kind: 'links'; items: { label: string; url: string }[] }
-  | { kind: 'tags'; items: { label: string; color?: string }[] }
+  | { kind: 'tags'; items: { label: string; color?: string; icon?: string }[] }
   | { kind: 'text'; content: string }
   | { kind: 'gallery'; items: { alt: string; src?: string }[] };
 

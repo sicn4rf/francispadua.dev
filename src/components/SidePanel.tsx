@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import styled from 'styled-components';
 import type { SidePanelContent, PanelSectionData } from '../types';
 import { fadeIn } from '../styles/GlobalStyle';
@@ -122,12 +123,32 @@ const TagRow = styled.div`
 `;
 
 const Tag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   padding: 0.2rem 0.55rem;
   background: ${({ theme }) => theme.colors.overlay};
   border-radius: 4px;
   font-size: 11.5px;
   color: ${({ theme }) => theme.colors.accent};
 `;
+
+const TagIcon = styled.img`
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+`;
+
+/**
+ * Renders nothing if the icon 404s. Devicon does not have a glyph for every
+ * tool in the list — Kyverno, Envoy and Gravitee among them — and a broken
+ * 13px image is far worse than a bare label.
+ */
+function OptionalIcon({ src }: { src: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return <TagIcon src={src} alt="" aria-hidden="true" loading="lazy" onError={() => setFailed(true)} />;
+}
 
 const LinkList = styled.div`
   display: flex;
@@ -176,6 +197,44 @@ const GalleryRow = styled.div`
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
+  padding-bottom: 0.3rem;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.colors.muted}55;
+    border-radius: 2px;
+  }
+`;
+
+const GalleryImage = styled.img`
+  height: 150px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+  &:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    &:hover {
+      transform: none;
+    }
+  }
+`;
+
+const CoverImage = styled.img`
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
 `;
 
 const GalleryItem = styled(Placeholder)`
@@ -186,11 +245,37 @@ const GalleryItem = styled(Placeholder)`
   padding: 0.5rem;
 `;
 
+/**
+ * Falls back to the dashed placeholder when the file is missing.
+ *
+ * Panels reference images under /images that are not all committed yet, plus a
+ * handful of third-party covers that can disappear or start refusing hotlinks.
+ * A broken-image icon looks worse than no image at all.
+ */
+function ImageWithFallback({
+  src,
+  alt,
+  variant,
+}: {
+  src: string;
+  alt: string;
+  variant: 'cover' | 'gallery';
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return variant === 'cover' ? <Placeholder>{alt}</Placeholder> : <GalleryItem>{alt}</GalleryItem>;
+  }
+
+  const Img = variant === 'cover' ? CoverImage : GalleryImage;
+  return <Img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
+}
+
 function renderSection(data: PanelSectionData) {
   switch (data.kind) {
     case 'image':
       return data.src ? (
-        <img src={data.src} alt={data.alt} style={{ width: '100%', borderRadius: 6 }} />
+        <ImageWithFallback src={data.src} alt={data.alt} variant="cover" />
       ) : (
         <Placeholder>{data.alt}</Placeholder>
       );
@@ -200,6 +285,7 @@ function renderSection(data: PanelSectionData) {
         <TagRow>
           {data.items.map(item => (
             <Tag key={item.label} style={item.color ? { color: item.color } : undefined}>
+              {item.icon && <OptionalIcon src={item.icon} />}
               {item.label}
             </Tag>
           ))}
@@ -225,7 +311,7 @@ function renderSection(data: PanelSectionData) {
         <GalleryRow>
           {data.items.map(item =>
             item.src ? (
-              <img key={item.alt} src={item.src} alt={item.alt} style={{ height: 150, borderRadius: 4 }} />
+              <ImageWithFallback key={item.alt} src={item.src} alt={item.alt} variant="gallery" />
             ) : (
               <GalleryItem key={item.alt}>{item.alt}</GalleryItem>
             ),

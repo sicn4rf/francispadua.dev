@@ -214,11 +214,8 @@ export const now = {
     'Kyverno policy authoring — admission control that fails loudly at deploy time rather than quietly at 3am.',
     'Distributed systems coursework, and enough Rust to be dangerous.',
   ],
-  Reading: [
-    '"Designing Data-Intensive Applications" — Martin Kleppmann',
-    '"The Kubernetes Book" — Nigel Poulton',
-    'Darknet Diaries, on the drive to Irvine.',
-  ],
+  Reading: ['"Atomic Habits" — James Clear'],
+  Watching: ['Jujutsu Kaisen S3', 'My Hero Academia', 'Fullmetal Alchemist: Brotherhood'],
   Goals: [
     'Return to platform engineering full-time after graduation.',
     'Take the CCDC national title — 8th place stings.',
