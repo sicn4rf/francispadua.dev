@@ -45,8 +45,14 @@ const Hints = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 1;
   min-width: 0;
+  overflow: hidden;
+
+  /* Keybinding hints are meaningless without a physical keyboard, and at this
+     width they collided with the right-hand section instead of scrolling. */
+  @media (max-width: 700px) {
+    display: none;
+  }
 `;
 
 const Chip = styled.span`
@@ -73,6 +79,13 @@ const Right = styled.div`
   padding-left: 10px;
   color: ${({ theme }) => theme.colors.muted};
   flex-shrink: 0;
+
+  /* The theme name is the least useful of the three when space is tight. */
+  @media (max-width: 420px) {
+    .theme-name {
+      display: none;
+    }
+  }
 `;
 
 const Path = styled.span`
@@ -138,7 +151,7 @@ export const StatusBar = ({ cwd, mode, themeName, soundEnabled, onToggleSound }:
       >
         {soundEnabled ? 'sound on' : 'sound off'}
       </Toggle>
-      <span>{themeName}</span>
+      <span className="theme-name">{themeName}</span>
     </Right>
   </Bar>
 );
