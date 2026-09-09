@@ -1,3 +1,5 @@
+import { profile } from './content';
+
 /**
  * figlet -f "DOS Rebel" -w 999 ">FRANCIS"
  *
@@ -68,7 +70,7 @@ export const NEOFETCH_LOGO = [
 
 export const neofetchInfo = (themeName: string): [string, string][] => [
   ['OS', 'PortfolioOS 2.0 x86_64'],
-  ['Host', 'francispadua.com'],
+  ['Host', profile.site],
   ['Kernel', 'react-19.2.0'],
   ['Shell', 'francis-sh 5.9'],
   ['Terminal', 'portfolio-term'],

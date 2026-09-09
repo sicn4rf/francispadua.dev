@@ -1,4 +1,4 @@
-# francispadua.com
+# francispadua.dev
 
 An interactive terminal portfolio. Type `help` and poke around.
 

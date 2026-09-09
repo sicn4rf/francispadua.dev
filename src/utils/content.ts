@@ -37,7 +37,7 @@ export const profile = {
   linkedin: 'linkedin.com/in/francis-e-padua',
   github: 'github.com/sicn4rf',
   githubUser: 'sicn4rf',
-  site: 'francispadua.com',
+  site: 'francispadua.dev',
   bio: [
     "I'm a Computer Science student at UC Irvine, graduating June 2028.",
     'Most of my work sits underneath other people’s software: Kubernetes platforms, GitOps pipelines, CI supply-chain security, and the kind of Linux hardening you only learn by having a red team take your services down in real time.',

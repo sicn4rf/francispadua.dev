@@ -29,5 +29,5 @@
   <rect x="76" y="832" width="74" height="22" rx="4" fill="#a6e3a1"/>
   <text x="113" y="848" font-size="13" font-weight="bold" fill="#1e1e2e" text-anchor="middle">NORMAL</text>
   <text x="168" y="848" class="dim" font-size="13"><tspan class="acc">Tab</tspan> complete   <tspan class="acc">Ctrl-p</tspan> pane   <tspan class="acc">help</tspan> commands</text>
-  <text x="1124" y="848" class="dim" font-size="13" text-anchor="end">francispadua.com</text>
+  <text x="1124" y="848" class="dim" font-size="13" text-anchor="end">francispadua.dev</text>
 </svg>
