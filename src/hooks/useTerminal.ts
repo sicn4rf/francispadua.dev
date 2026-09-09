@@ -57,13 +57,20 @@ export const useTerminal = (ctx: Ctx) => {
     };
   });
 
-  const processCommand = useCallback((input: string) => {
+  /**
+   * `record: false` runs a command without putting it in the recallable
+   * history — for the login banner, which the visitor did not type and should
+   * not have to arrow past.
+   */
+  const processCommand = useCallback((input: string, { record = true } = {}) => {
     const trimmed = input.trim();
     if (!trimmed) return;
 
-    setCommandHistory(prev => (prev[prev.length - 1] === trimmed ? prev : [...prev, trimmed]));
-    historyIndex.current = -1;
-    draft.current = '';
+    if (record) {
+      setCommandHistory(prev => (prev[prev.length - 1] === trimmed ? prev : [...prev, trimmed]));
+      historyIndex.current = -1;
+      draft.current = '';
+    }
 
     const [name, ...args] = trimmed.split(/\s+/);
     const command = commands[name.toLowerCase()];

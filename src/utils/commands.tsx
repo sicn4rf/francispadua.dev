@@ -183,6 +183,7 @@ export const commands: Record<string, Command> = {
         ['ABOUT ME', ['about', 'experience', 'projects', 'skills', 'education', 'awards', 'now', 'contact', 'resume']],
         ['FILESYSTEM', ['ls', 'cd', 'cat', 'pwd', 'tree']],
         ['SHELL', ['whoami', 'history', 'echo', 'date', 'uname', 'man', 'clear']],
+        ['PLATFORM', ['kubectl', 'helm', 'argocd', 'aws', 'docker']],
         ['INTERACTIVE', ['typingtest', 'snake', 'wordle']],
         ['SYSTEM', ['theme', 'sound', 'neofetch']],
       ];
@@ -222,8 +223,9 @@ export const commands: Record<string, Command> = {
           <ManEntry>
             <ManDesc>
               <Muted>
-                There is more here than this list. If you use a terminal for work, try the
-                things you would actually type.
+                The cluster is real enough to poke at — try{' '}
+                <strong>kubectl describe pod northstar</strong>. And this list is not
+                everything; if you use a terminal for work, try what you would actually type.
               </Muted>
             </ManDesc>
           </ManEntry>

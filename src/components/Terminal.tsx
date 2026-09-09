@@ -230,6 +230,21 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
   }, []);
 
   /**
+   * The login banner — the way a shell runs neofetch out of .zshrc.
+   *
+   * Nothing else advertises that the cluster commands exist, and a visitor who
+   * never types `kubectl` never finds any of them. The ref guards against
+   * StrictMode's double effect invocation, which would otherwise print it
+   * twice in development.
+   */
+  const introRan = useRef(false);
+  useEffect(() => {
+    if (booting || introRan.current) return;
+    introRan.current = true;
+    processCommand('kubectl get pods', { record: false });
+  }, [booting, processCommand]);
+
+  /**
    * Konami code. Scoped to NORMAL mode — on `window` and always-on it ate the
    * arrow keys that walk command history, and Snake's steering.
    */
@@ -375,7 +390,8 @@ export const Terminal = ({ currentTheme, setTheme }: TerminalProps) => {
               </Banner>
               <Subtitle>{profile.subtitle}</Subtitle>
               <Hint>
-                Type <b>help</b> to get started, or just type what you would type in a real shell.
+                Type <b>help</b> to get started — or just type what you would type in a real
+                shell. <b>kubectl</b>, <b>helm</b> and <b>argocd</b> all work.
               </Hint>
 
               <div aria-live="polite" aria-atomic="false">
